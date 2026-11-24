@@ -1,0 +1,293 @@
+:root {
+  color-scheme: light;
+  --ink: #243027;
+  --muted: #5d6a60;
+  --paper: #efe6d4;
+  --card: #fbf6ec;
+  --line: #d9cbb3;
+  --green: #1e5b39;
+  --green-deep: #143d26;
+  --moss: #e5f0e4;
+  --clay: #8d4b24;
+  --up: #1d6b3a;
+  --down: #8d4b24;
+  --shadow: 0 12px 30px rgba(36, 48, 39, 0.08);
+  font-family: "Segoe UI", "Avenir Next", "Trebuchet MS", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.7), transparent 28rem),
+    var(--paper);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+button, input, select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  min-height: 48px;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--green);
+  color: #f6f3ea;
+  border-color: var(--green-deep);
+}
+
+button.quiet, button.danger {
+  background: transparent;
+}
+
+button.danger { color: var(--clay); }
+
+button:disabled { opacity: 0.6; cursor: wait; }
+
+:focus-visible {
+  outline: 3px solid var(--green);
+  outline-offset: 2px;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: end;
+  padding: 1rem 1.1rem 0.4rem;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.brand, .eyebrow {
+  margin: 0;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+h1, h2, h3 { font-weight: 650; letter-spacing: -0.03em; }
+
+h1 { margin: 0; font-size: 1.7rem; font-family: Georgia, "Iowan Old Style", serif; }
+
+.interval-chip {
+  margin: 0;
+  background: var(--green-deep);
+  color: #f6f3ea;
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  white-space: nowrap;
+}
+
+main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0.5rem 1.1rem 2rem;
+}
+
+main.with-nav { padding-bottom: 7rem; }
+
+.dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: rgba(251, 246, 236, 0.96);
+  border-top: 1px solid var(--line);
+  padding: 0.35rem 0.4rem calc(0.35rem + env(safe-area-inset-bottom));
+  z-index: 5;
+}
+
+.dock a {
+  text-align: center;
+  text-decoration: none;
+  color: var(--muted);
+  padding: 0.75rem 0.2rem;
+  border-radius: 0.8rem;
+}
+
+.dock a.active {
+  color: var(--green-deep);
+  background: var(--moss);
+  font-weight: 700;
+}
+
+.login, .card, .hero, .guide {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 1.3rem;
+  box-shadow: var(--shadow);
+  padding: 1.1rem;
+}
+
+.login { margin-top: 8vh; }
+
+.lede, .hint, .rule, .streaks { color: var(--muted); }
+
+.rule { font-size: 1.02rem; color: var(--ink); }
+
+form { display: grid; gap: 0.75rem; }
+
+label { display: grid; gap: 0.3rem; font-size: 0.92rem; }
+
+input, select {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 0.8rem;
+  padding: 0.75rem 0.8rem;
+  min-height: 48px;
+}
+
+.hero { margin: 0.8rem 0; }
+
+.clock {
+  margin: 0.2rem 0 0.4rem;
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: clamp(3.4rem, 12vw, 6rem);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+
+.hero.due {
+  background: #f3e2c2;
+  border-color: #e2c48a;
+}
+
+.stats, .actions, .row, .split, .day-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.stats p, .day-strip article {
+  margin: 0;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.actions { flex-direction: column; }
+
+.actions button, .row button, .primary { min-width: 10rem; }
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+}
+
+.check input { width: 1.2rem; min-height: 1.2rem; }
+
+fieldset {
+  border: 1px dashed var(--line);
+  border-radius: 0.9rem;
+  margin: 0;
+}
+
+.script {
+  margin: 0;
+  padding: 0.8rem;
+  border-radius: 0.8rem;
+}
+
+.script.praise { background: var(--moss); }
+.script.neutral { background: #f3eee4; }
+
+.banner {
+  margin: 0.6rem auto;
+  max-width: 940px;
+  padding: 0.8rem 1rem;
+  border-radius: 0.8rem;
+}
+
+.banner.error { background: #f8e4d8; color: #6b3418; }
+.banner.ok { background: var(--moss); color: var(--green-deep); }
+.banner.drink {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: center;
+  background: #e7f1f4;
+  max-width: none;
+}
+
+.sound { margin-top: 1rem; }
+
+.sheet-head, .guide h2 { display: flex; justify-content: space-between; gap: 1rem; align-items: end; }
+.sheet-head h2, .guide h2, .settings h2 { margin-top: 0; }
+
+.day-strip { margin: 0.8rem 0 1rem; }
+.day-strip article { min-width: 11rem; }
+.day-strip h3 { margin: 0 0 0.2rem; font-size: 1rem; }
+.day-strip p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 1rem; background: white; }
+
+table { width: 100%; border-collapse: collapse; min-width: 760px; }
+
+th, td {
+  text-align: left;
+  padding: 0.65rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+th {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: #f6f0e4;
+}
+
+td span {
+  display: inline-block;
+  margin-right: 0.35rem;
+  color: #b7ad9c;
+}
+
+td span.on {
+  color: var(--green-deep);
+  font-weight: 750;
+  border: 2px solid var(--green);
+  border-radius: 999px;
+  padding: 0.05rem 0.35rem;
+}
+
+.note.up { color: var(--up); }
+.note.down { color: var(--down); }
+
+td small { display: block; color: var(--muted); }
+
+.row-actions { white-space: nowrap; }
+.row-actions button { min-height: 36px; padding: 0.35rem 0.7rem; margin: 0 0.15rem 0.15rem 0; }
+
+.guide h3 { margin-bottom: 0.3rem; }
+.guide li { margin: 0.35rem 0; }
+
+@media (max-width: 720px) {
+  .sheet-head, .banner.drink { flex-direction: column; align-items: stretch; }
+  .top { align-items: start; flex-direction: column; }
+}
+
+@media print {
+  .dock, .top, .sheet-head .row, .row-actions, .banner { display: none !important; }
+  body, main { background: white; padding: 0; }
+  .table-wrap { border: 0; }
+}

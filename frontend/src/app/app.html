@@ -1,0 +1,28 @@
+@if (showNav()) {
+  <header class="top">
+    <div>
+      <p class="brand">Potty Log</p>
+      <h1>{{ child() }}</h1>
+    </div>
+    @if (interval() !== null) {
+      <p class="interval-chip">{{ interval() }} min off potty</p>
+    }
+  </header>
+}
+
+@if (api.error()) {
+  <p class="banner error" role="alert">{{ api.error() }}</p>
+}
+
+<main [class.with-nav]="showNav()">
+  <router-outlet />
+</main>
+
+@if (showNav()) {
+  <nav class="dock" aria-label="Sections">
+    <a routerLink="/now" routerLinkActive="active">Now</a>
+    <a routerLink="/sheet" routerLinkActive="active">Sheet</a>
+    <a routerLink="/guide" routerLinkActive="active">Guide</a>
+    <a routerLink="/settings" routerLinkActive="active">Settings</a>
+  </nav>
+}

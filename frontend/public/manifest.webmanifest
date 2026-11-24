@@ -1,0 +1,10 @@
+{
+  "name": "Potty Log",
+  "short_name": "Potty Log",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#efe6d4",
+  "theme_color": "#efe6d4"
+}

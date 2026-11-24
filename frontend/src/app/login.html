@@ -1,0 +1,16 @@
+<section class="login">
+  <p class="eyebrow">Training log</p>
+  <h2>Potty Log</h2>
+  <p class="lede">
+    A timer and data sheet for scheduled sits. The off-potty interval moves by the
+    sheet rule: three dry intervals with a toilet void add time, two accidents in a row take time away.
+  </p>
+  <form (ngSubmit)="submit($event)">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" [(ngModel)]="password" required />
+    @if (message()) {
+      <p class="banner error" role="alert">{{ message() }}</p>
+    }
+    <button class="primary" type="submit" [disabled]="busy()">{{ busy() ? 'Checking…' : 'Open the log' }}</button>
+  </form>
+</section>

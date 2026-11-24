@@ -1,0 +1,111 @@
+<section class="sheet-head">
+  <div>
+    <h2>Data sheet</h2>
+    <p>Same columns as the paper log. A row brought in from the paper log keeps the interval written on it. New rows follow the sheet rule.</p>
+  </div>
+  <div class="row">
+    <button type="button" class="primary" (click)="startNew()">Add a row</button>
+    <button type="button" (click)="api.downloadCsv()">Download CSV</button>
+  </div>
+</section>
+
+@if (days().length) {
+  <div class="day-strip">
+    @for (day of days(); track day.date) {
+      <article>
+        <h3>{{ day.date }}</h3>
+        <p>{{ day.sits }} {{ day.sits === 1 ? 'row' : 'rows' }} · {{ day.voids }} {{ day.voids === 1 ? 'void' : 'voids' }} · {{ day.accidents }} {{ day.accidents === 1 ? 'accident' : 'accidents' }}</p>
+        <p>Last row {{ day.lastInterval }} min @if (day.lastNote) { · {{ day.lastNote }} }</p>
+      </article>
+    }
+  </div>
+}
+
+@if (editing(); as draft) {
+  <form class="card outcome" (ngSubmit)="save()">
+    <h3>{{ editingId() ? 'Edit row' : 'New row' }}</h3>
+    <div class="split">
+      <label>Date <input type="date" name="date" [(ngModel)]="draft.date" required /></label>
+      <label>Time <input type="time" name="time" [(ngModel)]="draft.time" required /></label>
+    </div>
+    <label>How it happened
+      <select name="kind" [(ngModel)]="draft.kind">
+        <option value="manual">Written in</option>
+        <option value="scheduled">Scheduled sit</option>
+        <option value="asked">Child asked</option>
+        <option value="accident">Accident</option>
+      </select>
+    </label>
+    <fieldset>
+      <legend>Toilet voids</legend>
+      <label class="check"><input type="checkbox" name="urine" [(ngModel)]="draft.toilet_urine" /> Urine Y(U)</label>
+      <label class="check"><input type="checkbox" name="bm" [(ngModel)]="draft.toilet_bm" /> BM Y(BM)</label>
+    </fieldset>
+    <fieldset>
+      <legend>Accident</legend>
+      <label class="check"><input type="checkbox" name="wet" [(ngModel)]="draft.accident_wet" /> Wet</label>
+      <label class="check"><input type="checkbox" name="soiled" [(ngModel)]="draft.accident_soiled" /> Soiled</label>
+    </fieldset>
+    <label>Comments <input name="comment" [(ngModel)]="draft.comment" maxlength="500" /></label>
+    <div class="row">
+      <button class="primary" type="submit" [disabled]="api.busy()">Save</button>
+      <button type="button" (click)="cancel()">Cancel</button>
+    </div>
+  </form>
+}
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Time</th>
+        <th>Off-potty interval</th>
+        <th>Toilet voids</th>
+        <th>Accident</th>
+        <th>Comments</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (entry of entries(); track entry.id) {
+        <tr>
+          <td>{{ entry.date }}</td>
+          <td>{{ entry.time }}</td>
+          <td>{{ entry.interval_minutes }}</td>
+          <td>
+            <span [class.on]="entry.toilet_bm">Y(BM)</span>
+            <span [class.on]="entry.toilet_urine">Y(U)</span>
+            <span [class.on]="!entry.toilet_bm && !entry.toilet_urine">N</span>
+          </td>
+          <td>
+            <span [class.on]="entry.accident_soiled">S</span>
+            <span [class.on]="entry.accident_wet">W</span>
+          </td>
+          <td>
+            @if (entry.decision_note) {
+              <strong class="note" [class.up]="entry.decision === 'increase'" [class.down]="entry.decision === 'decrease'">{{ entry.decision_note }}</strong>
+            }
+            @if (entry.comment) {
+              <span>{{ entry.comment }}</span>
+            }
+            <small>{{ kindLabel(entry.kind) }}</small>
+          </td>
+          <td class="row-actions">
+            <button type="button" (click)="edit(entry)">Edit</button>
+            @if (confirmId() === entry.id) {
+              <button type="button" class="danger" (click)="remove(entry.id)">Delete</button>
+              <button type="button" (click)="confirmId.set(null)">Keep</button>
+            } @else {
+              <button type="button" (click)="confirmId.set(entry.id)">Delete</button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="7">No rows yet. A sit saved from Now, or a row added here, shows up on this sheet.</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

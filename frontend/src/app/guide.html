@@ -1,0 +1,47 @@
+<article class="guide">
+  <h2>How this round works</h2>
+  <p>
+    This is a parent log for the written sit schedule. It follows the data sheet,
+    which is the rule the filled-in example uses. It is not a substitute for the clinician’s plan.
+  </p>
+
+  <h3>Off-potty interval</h3>
+  <ul>
+    <li>Start a little shorter than the dry-check day. If he went about every 30 minutes in a pull-up, something like 20 minutes is the idea. The practice sheet starts at 15.</li>
+    <li>A 0-minute row is the first sit after a pull-up comes off. He still wears one for naps, overnight, and leaving the house. That sit stays on the sheet. It does not move the off-potty interval, and it does not count toward the dry streak or the accident streak. The next row keeps the interval that was already in effect.</li>
+    <li>Stay close to the bathroom during the interval.</li>
+    <li>When the timer ends, stop the other activity and go sit, even if he is eating or playing.</li>
+    <li>If you see a precursor, such as touching, ask if he needs to go. Yes means he can go now. No means wait for the scheduled sit.</li>
+  </ul>
+
+  <h3>The sit</h3>
+  <ul>
+    <li>Say that it is time to go potty. Let him pull his clothes down if he can.</li>
+    <li>He sits for {{ sit() }} minutes, or gets up sooner if he voids in the potty.</li>
+    <li>Sitting should stay pleasant: talk, sing, praise sitting. Block play that fights the sit, such as flushing over and over.</li>
+    <li>{{ reward() }} is only for a pee or poop in the potty. Not for sitting, and not at any other time of day or night. Everyone follows that.</li>
+  </ul>
+
+  <h3>After a toilet void</h3>
+  <p>Praise immediately, then hand over {{ reward() }} immediately. The timing is what teaches him what earned it.</p>
+
+  <h3>If there is an accident</h3>
+  <ul>
+    <li>Take him to the bathroom right away and have him sit. Tell him he needs to pee in the potty.</li>
+    <li>He sits the full {{ sit() }} minutes unless he voids in the potty again.</li>
+    <li>If he does void in the potty, praise and reward that the same way as any other success.</li>
+    <li>Record both the accident and the toilet void.</li>
+    <li>Do not reset the off-potty timer. The next scheduled sit stays where it was.</li>
+    <li>Stay neutral while you clean up. No reprimands and no comforting phrases about the accident. Attention goes to the behavior you want to see more of.</li>
+  </ul>
+
+  <h3>When the interval changes</h3>
+  <p>The instruction pages mention adding 5–10 minutes. The data sheet, and the handwritten example, use 5 minutes and an extra condition. This app follows the sheet. The step is {{ step() }} minutes until you change it in Settings.</p>
+  <ul>
+    <li>Dry for 3 intervals in a row, and a pee or poop on the toilet in at least one of those three: increase by {{ step() }} minutes.</li>
+    <li>Three dry intervals with no toilet void: the interval stays put.</li>
+    <li>Accidents on 2 intervals in a row: decrease by {{ step() }} minutes.</li>
+    <li>A toilet void on the same row as an accident still counts as an accident. The dry streak starts over.</li>
+    <li>The new interval applies to the next row, which is how the practice sheet is marked.</li>
+  </ul>
+</article>

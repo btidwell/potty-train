@@ -1,0 +1,49 @@
+@if (draft(); as form) {
+  <form class="card settings" (ngSubmit)="save()">
+    <h2>Settings</h2>
+    <label>Child’s name
+      <input name="child_name" [(ngModel)]="form.child_name" maxlength="80" />
+    </label>
+    <label>Starting off-potty interval (minutes)
+      <input name="starting_interval_minutes" type="number" min="5" max="240" [(ngModel)]="form.starting_interval_minutes" />
+    </label>
+    <p class="hint">Use a little less than the dry-check day. Changing this recomputes every later interval on the sheet.</p>
+    <label>Step up or down (minutes)
+      <input name="step_minutes" type="number" min="5" max="30" [(ngModel)]="form.step_minutes" />
+    </label>
+    <p class="hint">The sheet uses 5. The instruction page allows 5–10.</p>
+    <div class="split">
+      <label>Minimum
+        <input name="min_interval_minutes" type="number" min="5" max="120" [(ngModel)]="form.min_interval_minutes" />
+      </label>
+      <label>Maximum
+        <input name="max_interval_minutes" type="number" min="5" max="240" [(ngModel)]="form.max_interval_minutes" />
+      </label>
+    </div>
+    <label>Sit length (minutes)
+      <input name="sit_minutes" type="number" min="1" max="15" [(ngModel)]="form.sit_minutes" />
+    </label>
+    <label>Drink prompt (minutes, 0 turns it off)
+      <input name="drink_prompt_minutes" type="number" min="0" max="60" [(ngModel)]="form.drink_prompt_minutes" />
+    </label>
+    <label>Special reward
+      <input name="reinforcer_note" [(ngModel)]="form.reinforcer_note" maxlength="240" placeholder="What he gets only for using the potty" />
+    </label>
+    <label>Timezone for “today”
+      <select name="timezone" [(ngModel)]="form.timezone">
+        @for (zone of zoneOptions(); track zone) {
+          <option [value]="zone">{{ zone }}</option>
+        }
+      </select>
+    </label>
+    <div class="row">
+      <button class="primary" type="submit" [disabled]="api.busy()">Save settings</button>
+      <button type="button" (click)="logout()">Sign out</button>
+    </div>
+    @if (saved()) {
+      <p class="banner ok">Saved. Intervals on the sheet were recalculated.</p>
+    }
+  </form>
+} @else {
+  <p class="lede">Loading settings…</p>
+}
