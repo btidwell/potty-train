@@ -1,0 +1,112 @@
+@if (state(); as log) {
+  <section class="stats">
+    <p>
+      <strong>{{ log.derived.summary_sits }}</strong>
+      {{ log.derived.summary_sits === 1 ? 'row' : 'rows' }}
+      @if (log.derived.summary_label === 'today') { today } @else { on {{ log.derived.summary_label }} }
+    </p>
+    <p><strong>{{ log.derived.summary_voids }}</strong> toilet {{ log.derived.summary_voids === 1 ? 'void' : 'voids' }}</p>
+    <p><strong>{{ log.derived.summary_accidents }}</strong> {{ log.derived.summary_accidents === 1 ? 'accident' : 'accidents' }}</p>
+  </section>
+
+  <p class="rule">{{ log.derived.rule_status }}</p>
+  <p class="streaks">
+    Dry streak {{ log.derived.dry_streak }} / {{ log.derived.dry_needed }}
+    @if (log.derived.dry_streak_has_void) {
+      · toilet void recorded
+    }
+    · Accident streak {{ log.derived.accident_streak }} / {{ log.derived.accident_needed }}
+  </p>
+
+  @if (drinkDue()) {
+    <div class="banner drink">
+      <p>Offer a drink. Keep a favorite cup nearby, with no dairy and no caffeine.</p>
+      <button type="button" (click)="ackDrink()">Offered</button>
+    </div>
+  }
+
+  @if (sitting(); as sit) {
+    <section class="hero" [class.due]="sitLeft() <= 0">
+      <p class="eyebrow">{{ sit.kind === 'accident' ? 'Accident sit' : sit.kind === 'asked' ? 'He asked to go' : 'Scheduled sit' }}</p>
+      <p class="clock" aria-live="polite">{{ sitLeft() <= 0 ? 'Sit time is up' : clock(sitLeft()) }}</p>
+      <p>
+        Keep the sit pleasant. Talk or sing, and praise sitting.
+        The special reward waits for a pee or poop in the potty.
+        He can get up when he goes, or when this timer ends.
+      </p>
+      @if (sit.kind === 'accident') {
+        <p>Stay neutral. The off-potty timer is still running toward the next scheduled sit.</p>
+      }
+    </section>
+
+    <form class="card outcome" (ngSubmit)="saveSit()">
+      <fieldset>
+        <legend>Toilet voids</legend>
+        <label class="check"><input type="checkbox" [(ngModel)]="urine" name="urine" /> Urine Y(U)</label>
+        <label class="check"><input type="checkbox" [(ngModel)]="bm" name="bm" /> BM Y(BM)</label>
+      </fieldset>
+      <fieldset>
+        <legend>Accident</legend>
+        <label class="check"><input type="checkbox" [(ngModel)]="wet" name="wet" /> Wet</label>
+        <label class="check"><input type="checkbox" [(ngModel)]="soiled" name="soiled" /> Soiled</label>
+      </fieldset>
+      @if ((urine || bm) && !wet && !soiled) {
+        <p class="script praise">
+          Right away: warm praise, then {{ reward() }}.
+          He should not have that item at any other time.
+        </p>
+      }
+      @if (wet || soiled) {
+        <p class="script neutral">
+          No scolding and no comforting the accident. If he also goes in the potty, praise and reward that part.
+          Record both. Do not reset the off-potty timer.
+        </p>
+      }
+      <label for="comment">Comment</label>
+      <input id="comment" name="comment" [(ngModel)]="comment" maxlength="500" />
+      <div class="row">
+        <button class="primary" type="submit" [disabled]="api.busy()">Save row</button>
+        <button type="button" (click)="cancelSit()" [disabled]="api.busy()">Cancel sit</button>
+      </div>
+    </form>
+  } @else {
+    @if (!log.schedule.running) {
+      <section class="hero">
+        <p class="eyebrow">Off-potty interval {{ log.derived.current_interval_minutes }} min</p>
+        <p class="clock">Ready</p>
+        <p>Start the timer when training for the day begins. The first sit can also happen right now.</p>
+      </section>
+      <div class="actions">
+        <button class="primary" type="button" (click)="startTimer()">Start {{ log.derived.current_interval_minutes }}-min timer</button>
+        <button type="button" (click)="beginSit('scheduled')">Sit now</button>
+      </div>
+    } @else {
+      <section class="hero" [class.due]="offLeft() <= 0">
+        <p class="eyebrow">Next sit · {{ log.schedule.timer_interval_minutes }} min timer</p>
+        <p class="clock" aria-live="polite">{{ offLeft() <= 0 ? 'Time to sit' : clock(offLeft()) }}</p>
+        @if (log.schedule.timer_interval_minutes !== log.derived.current_interval_minutes) {
+          <p>This timer was started at {{ log.schedule.timer_interval_minutes }} min. The next one will use {{ log.derived.current_interval_minutes }} min.</p>
+        }
+      </section>
+      <div class="actions">
+        <button class="primary" type="button" (click)="beginSit('scheduled')">
+          {{ offLeft() <= 0 ? 'Start ' + log.settings.sit_minutes + '-minute sit' : 'Start sit early' }}
+        </button>
+        <button type="button" (click)="beginSit('asked')">Child asked to go</button>
+        <button type="button" (click)="beginSit('accident')">Accident — sit now</button>
+        <button type="button" class="quiet" (click)="stopTimer()">Stop timer</button>
+      </div>
+    }
+  }
+
+  <div class="row sound">
+    <button type="button" class="quiet" (click)="toggleSound()">
+      {{ soundOn() ? 'Chime is on' : 'Chime is off' }}
+    </button>
+    <button type="button" class="quiet" (click)="enableNotifications()">
+      {{ notifyLabel() }}
+    </button>
+  </div>
+} @else {
+  <p class="lede">Loading the log…</p>
+}
