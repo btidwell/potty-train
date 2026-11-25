@@ -209,6 +209,20 @@ def test_future_off_timer_schedules_without_sending(app):
     assert not app.stored()["reminders"].get("off_sent_for")
 
 
+def test_cancel_sit_from_ready_does_not_send(app):
+    app.subscribe()
+    status, body = app.invoke("POST", "/api/schedule/start-sit", {"kind": "scheduled"})
+    assert status == 200, body
+    assert body["schedule"]["active_sit"]["kind"] == "scheduled"
+    assert body["schedule"]["running"] is False
+    status, body = app.invoke("POST", "/api/schedule/cancel-sit")
+    assert status == 200, body
+    assert body["schedule"]["running"] is False
+    assert body["schedule"]["next_sit_at"] is None
+    assert body["schedule"]["active_sit"] is None
+    assert app.pushes == []
+
+
 def test_stop_timer_deletes_the_off_schedule(app):
     app.invoke("POST", "/api/schedule/start-timer")
     status, _body = app.invoke("POST", "/api/schedule/stop-timer")
