@@ -13,6 +13,7 @@ from typing import Any
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
+from potty_train.push import public_push_key
 from potty_train.rules import current_interval, recompute_entries, streak_status
 
 KINDS = {"scheduled", "asked", "accident", "manual"}
@@ -80,6 +81,7 @@ def public_state(state: dict[str, Any], now: datetime) -> dict[str, Any]:
             "summary_accidents": summary_accidents,
             "server_now": now.isoformat(),
         },
+        "push": {"public_key": public_push_key()},
     }
 
 

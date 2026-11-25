@@ -65,6 +65,9 @@ export interface AppState {
   schedule: Schedule;
   entries: Entry[];
   derived: Derived;
+  push: {
+    public_key: string;
+  };
 }
 
 export interface Outcome {

@@ -135,6 +135,28 @@ resource "aws_secretsmanager_secret_version" "token_key" {
   secret_string = random_password.token_key.result
 }
 
+resource "tls_private_key" "vapid" {
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P256"
+}
+
+resource "aws_secretsmanager_secret" "vapid" {
+  name        = "potty-log-vapid"
+  description = "VAPID signing key for potty log web push."
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "vapid" {
+  secret_id = aws_secretsmanager_secret.vapid.id
+  secret_string = jsonencode({
+    private_pem = tls_private_key.vapid.private_key_pem
+    public_pem  = tls_private_key.vapid.public_key_pem
+  })
+}
+
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/aws/lambda/potty-log-api"
   retention_in_days = 30
@@ -155,7 +177,7 @@ resource "aws_lambda_function" "api" {
   filename                       = data.archive_file.api.output_path
   source_code_hash               = data.archive_file.api.output_base64sha256
   memory_size = 256
-  timeout     = 10
+  timeout     = 20
 
   environment {
     variables = {
@@ -164,6 +186,12 @@ resource "aws_lambda_function" "api" {
       APP_PASSWORD_SECRET_ARN = aws_secretsmanager_secret.password.arn
       APP_TOKEN_SECRET_ARN    = aws_secretsmanager_secret.token_key.arn
       POTTY_ORIGIN_SECRET     = random_password.origin_header.result
+      VAPID_SECRET_ARN        = aws_secretsmanager_secret.vapid.arn
+      VAPID_SUBJECT           = var.vapid_subject
+      SCHEDULER_ROLE_ARN      = aws_iam_role.scheduler.arn
+      # Literal on purpose. Referencing aws_lambda_function.api from its own
+      # environment block makes Terraform plan a cycle.
+      SCHEDULE_TARGET_ARN     = "arn:aws:lambda:us-east-1:143977713810:function:potty-log-api"
     }
   }
 

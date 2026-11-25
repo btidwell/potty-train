@@ -2,6 +2,10 @@
 
 Routes are intentionally few. Every mutation returns the full public state
 so the phone UI can refresh from one response.
+
+EventBridge Scheduler invokes the same function with a reminder event when
+a timer deadline arrives and the phone may be closed. That event is not an
+HTTP request and does not pass through CloudFront.
 """
 
 from __future__ import annotations
@@ -10,11 +14,14 @@ import csv
 import hmac
 import io
 import json
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from potty_train.auth import issue_token, load_secret, passwords_match, token_is_valid
+from potty_train.push import PushFailed, upsert_subscription
+from potty_train.reminders import apply_reminder, sync_reminders
 from potty_train.service import (
     create_entry,
     delete_entry,
@@ -27,10 +34,14 @@ from potty_train.service import (
 )
 from potty_train.store import Conflict, build_store
 
+logger = logging.getLogger(__name__)
+
 _STORE = None
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    if _is_reminder_event(event):
+        return _remind(event)
     if not _from_cloudfront(event):
         return _response(403, {"error": "Forbidden."})
     method = _method(event)
@@ -68,6 +79,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             return _mutate(event, lambda state, body, now: schedule_action(state, "stop_timer", now))
         if method == "POST" and path == "/api/schedule/cancel-sit":
             return _mutate(event, lambda state, body, now: schedule_action(state, "cancel_sit", now))
+        if method == "POST" and path == "/api/push/subscribe":
+            return _subscribe(event)
         return _response(404, {"error": "Not found."})
     except json.JSONDecodeError:
         return _response(400, {"error": "Request body must be JSON."})
@@ -108,8 +121,50 @@ def _mutate(event: dict[str, Any], action: Any) -> dict[str, Any]:
     now = resolve_now(body, _server_now())
     state, etag = _load()
     action(state, body, now)
-    _save(state, etag)
+    etag = _save(state, etag)
+    _sync_after_save(state, etag, now)
     return _response(200, public_state(state, now))
+
+
+def _subscribe(event: dict[str, Any]) -> dict[str, Any]:
+    state, etag = _load()
+    upsert_subscription(state, _body(event))
+    _save(state, etag)
+    return _response(200, public_state(state, _server_now()))
+
+
+def _remind(event: dict[str, Any]) -> dict[str, Any]:
+    state, etag = _load()
+    try:
+        changed = apply_reminder(state, event["reminder"])
+    except PushFailed:
+        _save_quietly(state, etag)
+        raise
+    if changed:
+        _save(state, etag)
+    return {"ok": True}
+
+
+def _sync_after_save(state: dict[str, Any], etag: str, now: datetime) -> None:
+    try:
+        if sync_reminders(state, now):
+            _save(state, etag)
+    except Exception:
+        logger.exception("Could not sync timer reminders.")
+
+
+def _save_quietly(state: dict[str, Any], etag: str) -> None:
+    try:
+        _save(state, etag)
+    except Exception:
+        logger.exception("Could not save push subscriptions after a failed send.")
+
+
+def _is_reminder_event(event: dict[str, Any]) -> bool:
+    if "httpMethod" in event or "requestContext" in event:
+        return False
+    reminder = event.get("reminder")
+    return isinstance(reminder, dict) and reminder.get("kind") in {"off", "sit"}
 
 
 def _export() -> dict[str, Any]:
