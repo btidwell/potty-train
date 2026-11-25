@@ -81,8 +81,31 @@ def public_state(state: dict[str, Any], now: datetime) -> dict[str, Any]:
             "summary_accidents": summary_accidents,
             "server_now": now.isoformat(),
         },
-        "push": {"public_key": public_push_key()},
+        "push": _push_view(state),
     }
+
+
+def _push_view(state: dict[str, Any]) -> dict[str, Any]:
+    """Deadline tokens the open page needs so it does not alert again.
+
+    The reminders object and the push subscriptions stay off the response.
+    """
+    reminders = state.get("reminders")
+    if not isinstance(reminders, dict):
+        reminders = {}
+    return {
+        "public_key": public_push_key(),
+        "off_sent_for": _deadline_token(reminders.get("off_sent_for")),
+        "sit_sent_for": _deadline_token(reminders.get("sit_sent_for")),
+        "off_scheduled_for": _deadline_token(reminders.get("off_scheduled_for")),
+        "sit_scheduled_for": _deadline_token(reminders.get("sit_scheduled_for")),
+    }
+
+
+def _deadline_token(value: Any) -> str | None:
+    if isinstance(value, str) and value:
+        return value
+    return None
 
 
 def update_settings(state: dict[str, Any], payload: dict[str, Any]) -> None:

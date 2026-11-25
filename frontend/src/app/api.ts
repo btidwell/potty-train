@@ -18,6 +18,7 @@ export class Api {
   readonly state = signal<AppState | null>(null);
   readonly error = signal('');
   readonly busy = signal(false);
+  private writeVersion = 0;
 
   clientNow(): string {
     const date = new Date();
@@ -56,27 +57,34 @@ export class Api {
   }
 
   async refresh(): Promise<void> {
+    const version = this.writeVersion;
     const next = await this.send<AppState>('GET', '/api/state');
-    if (next) {
+    if (next && version === this.writeVersion) {
       this.state.set(next);
     }
   }
 
   async mutate(method: string, path: string, payload: Record<string, unknown> = {}): Promise<boolean> {
+    const version = ++this.writeVersion;
     const next = await this.send<AppState>(method, path, { ...payload, now: this.clientNow() });
     if (!next) {
       return false;
     }
-    this.state.set(next);
+    if (version === this.writeVersion) {
+      this.state.set(next);
+    }
     return true;
   }
 
   async postQuiet(path: string, payload: Record<string, unknown>): Promise<boolean> {
+    const version = this.writeVersion;
     const next = await this.send<AppState>('POST', path, payload, { quiet: true });
     if (!next) {
       return false;
     }
-    this.state.set(next);
+    if (version === this.writeVersion) {
+      this.state.set(next);
+    }
     return true;
   }
 

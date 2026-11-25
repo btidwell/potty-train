@@ -67,6 +67,10 @@ export interface AppState {
   derived: Derived;
   push: {
     public_key: string;
+    off_sent_for: string | null;
+    sit_sent_for: string | null;
+    off_scheduled_for: string | null;
+    sit_scheduled_for: string | null;
   };
 }
 
