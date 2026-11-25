@@ -280,6 +280,7 @@ fieldset {
 .sound { margin-top: 1rem; }
 
 .sheet-head, .guide h2 { display: flex; justify-content: space-between; gap: 1rem; align-items: end; }
+app-sheet .sheet-head { margin-bottom: 1.25rem; }
 .sheet-head h2, .guide h2, .settings h2 { margin-top: 0; }
 
 .people-list {
