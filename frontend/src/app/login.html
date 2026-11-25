@@ -1,16 +1,125 @@
 <section class="login">
   <p class="eyebrow">Training log</p>
   <h2>Potty Log</h2>
-  <p class="lede">
-    A timer and data sheet for scheduled sits. The off-potty interval moves by the
-    sheet rule: three dry intervals with a toilet void add time, two accidents in a row take time away.
-  </p>
-  <form (ngSubmit)="submit($event)">
-    <label for="password">Password</label>
-    <input id="password" name="password" type="password" autocomplete="current-password" [(ngModel)]="password" required />
-    @if (message()) {
-      <p class="banner error" role="alert">{{ message() }}</p>
+
+  @switch (step()) {
+    @case ('sign-in') {
+      <p class="lede">Sign in with the email you were invited with. A session stays open for 7 days.</p>
+      <form (ngSubmit)="submitSignIn($event)">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" [(ngModel)]="email" required />
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" [(ngModel)]="password" required />
+        @if (message()) {
+          <p class="banner" [class.error]="tone() === 'error'" [class.ok]="tone() === 'ok'" role="status">{{ message() }}</p>
+        }
+        <button class="primary" type="submit" [disabled]="busy()">{{ busy() ? 'Checking…' : 'Open the log' }}</button>
+      </form>
+      <div class="auth-links">
+        <button type="button" (click)="go('forgot')">Forgot password</button>
+      </div>
     }
-    <button class="primary" type="submit" [disabled]="busy()">{{ busy() ? 'Checking…' : 'Open the log' }}</button>
-  </form>
+    @case ('new-password') {
+      <p class="lede">
+        Choose a password for this account. It needs 12 characters, with uppercase, lowercase, a number, and a symbol.
+      </p>
+      <form (ngSubmit)="submitNewPassword($event)">
+        <label for="new-password">New password</label>
+        <input id="new-password" name="password" type="password" autocomplete="new-password" [(ngModel)]="password" required />
+        @if (message()) {
+          <p class="banner" [class.error]="tone() === 'error'" [class.ok]="tone() === 'ok'" role="status">{{ message() }}</p>
+        }
+        <button class="primary" type="submit" [disabled]="busy()">{{ busy() ? 'Saving…' : 'Save password' }}</button>
+      </form>
+    }
+    @case ('confirm-email') {
+      <p class="lede">Enter the code sent to {{ email }}. Check spam if it is not in the inbox.</p>
+      <form (ngSubmit)="submitEmailCode($event)">
+        <label for="email-code">Email code</label>
+        <input id="email-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" [(ngModel)]="code" required />
+        @if (message()) {
+          <p class="banner" [class.error]="tone() === 'error'" [class.ok]="tone() === 'ok'" role="status">{{ message() }}</p>
+        }
+        <button class="primary" type="submit" [disabled]="busy()">{{ busy() ? 'Checking…' : 'Confirm email' }}</button>
+      </form>
+      <div class="auth-links">
+        <button type="button" (click)="resendCode()" [disabled]="busy()">Send a new code</button>
+        <button type="button" (click)="go('sign-in')">Back to sign in</button>
+      </div>
+    }
+    @case ('totp-setup') {
+      <p class="lede">
+        Add Potty Log to an authenticator app such as Authy. Scan the code, or type the key by hand.
+        Then enter the 6-digit code the app shows.
+      </p>
+      @if (qr()) {
+        <img class="qr" [src]="qr()" alt="Authenticator setup code" />
+      }
+      <p class="secret-key">{{ secret() }}</p>
+      <form (ngSubmit)="submitTotp($event)">
+        <label for="setup-code">Authenticator code</label>
+        <input id="setup-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" [(ngModel)]="code" required />
+        @if (message()) {
+          <p class="banner" [class.error]="tone() === 'error'" [class.ok]="tone() === 'ok'" role="status">{{ message() }}</p>
+        }
+        <label class="check">
+          <input type="checkbox" name="remember" [(ngModel)]="rememberHere" />
+          Remember this device
+        </label>
+        <p class="hint">After this 7-day session ends, this browser can sign in without an authenticator code until you remove it in Settings.</p>
+        <button class="primary" type="submit" [disabled]="busy()">{{ busy() ? 'Checking…' : 'Turn on authenticator' }}</button>
+      </form>
+    }
+    @case ('totp-code') {
+      <p class="lede">Enter the 6-digit code from your authenticator app.</p>
+      <form (ngSubmit)="submitTotp($event)">
+        <label for="totp-code">Authenticator code</label>
+        <input id="totp-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" [(ngModel)]="code" required />
+        @if (message()) {
+          <p class="banner" [class.error]="tone() === 'error'" [class.ok]="tone() === 'ok'" role="status">{{ message() }}</p>
+        }
+        <label class="check">
+          <input type="checkbox" name="remember" [(ngModel)]="rememberHere" />
+          Remember this device
+        </label>
+        <p class="hint">After this 7-day session ends, this browser can sign in without an authenticator code until you remove it in Settings.</p>
+        <button class="primary" type="submit" [disabled]="busy()">{{ busy() ? 'Checking…' : 'Continue' }}</button>
+      </form>
+      <div class="auth-links">
+        <button type="button" (click)="go('sign-in')">Start over</button>
+      </div>
+    }
+    @case ('forgot') {
+      <p class="lede">We will email a code if this address has an account.</p>
+      <form (ngSubmit)="submitForgot($event)">
+        <label for="forgot-email">Email</label>
+        <input id="forgot-email" name="email" type="email" autocomplete="username" [(ngModel)]="email" required />
+        @if (message()) {
+          <p class="banner" [class.error]="tone() === 'error'" [class.ok]="tone() === 'ok'" role="status">{{ message() }}</p>
+        }
+        <button class="primary" type="submit" [disabled]="busy()">{{ busy() ? 'Sending…' : 'Send reset code' }}</button>
+      </form>
+      <div class="auth-links">
+        <button type="button" (click)="go('sign-in')">Back to sign in</button>
+      </div>
+    }
+    @case ('reset') {
+      <p class="lede">
+        Enter the code sent to {{ email }}, then choose a new password. You still need the authenticator app to sign in.
+      </p>
+      <form (ngSubmit)="submitReset($event)">
+        <label for="reset-code">Email code</label>
+        <input id="reset-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" [(ngModel)]="code" required />
+        <label for="reset-password">New password</label>
+        <input id="reset-password" name="password" type="password" autocomplete="new-password" [(ngModel)]="password" required />
+        @if (message()) {
+          <p class="banner" [class.error]="tone() === 'error'" [class.ok]="tone() === 'ok'" role="status">{{ message() }}</p>
+        }
+        <button class="primary" type="submit" [disabled]="busy()">{{ busy() ? 'Saving…' : 'Update password' }}</button>
+      </form>
+      <div class="auth-links">
+        <button type="button" (click)="go('forgot')">Send a new code</button>
+      </div>
+    }
+  }
 </section>

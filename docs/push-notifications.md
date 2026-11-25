@@ -2,7 +2,7 @@
 
 Handoff for a later session. This note is the plan only. Do not treat it as implemented.
 
-The live stack is Terraform in `infra/terraform/`: data bucket `potty-log-data-143977713810`, Lambda `potty-log-api`, Python 3.12, region `us-east-1`, account `143977713810`. The CDK app in `infra/potty_train_stack.py` is not what is deployed. Leave that file alone. The README still describes CDK; follow this note and the Terraform stack instead.
+The live stack is Terraform in `infra/terraform/`: data bucket `potty-log-data-143977713810`, Lambda `potty-log-api`, Python 3.12, region `us-east-1`, account `143977713810`. The CDK app in `infra/potty_train_stack.py` is not what is deployed. Leave that file alone.
 
 ## What works today
 
@@ -156,7 +156,7 @@ Add the `hashicorp/tls` provider in `infra/terraform/versions.tf`, with a pessim
 
 ## Deploy notes
 
-- Apply Terraform only after the Lambda package is built. Pass the current `allowed_cidrs` so the CloudFront allowlist does not change. Those values are an input variable, not in git (`deploy.auto.tfvars` is gitignored). Read the live value from that file or from the Terraform output before apply, and pass the same list back.
+- Apply Terraform only after the Lambda package is built. Viewers are limited to the United States by CloudFront geographic restrictions. `allowed_cidrs` is no longer an input. If `deploy.auto.tfvars` still sets it, remove that line before apply.
 - Rebuild and sync the frontend so the service worker and subscribe flow ship. CloudFront invalidation already happens from the Terraform UI `local-exec` provisioner in `infra/terraform/main.tf` (`aws s3 sync` of the UI bucket, then `aws cloudfront create-invalidation`).
 - iPhone check: installed app, permission granted from the button, start a short timer, close the app, confirm the notification arrives without reopening. A last-minute close (under about a minute) can be late or missed because Scheduler will not accept a past or too-soon `at()` time. The open app still notifies itself.
 

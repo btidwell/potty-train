@@ -1,40 +1,45 @@
 """Run the Lambda handler on localhost for the Angular dev server.
 
 This is a development stand-in. Production is the Lambda function in infra/.
+Sign-in uses the Cognito user pool. Terraform writes the pool ids to
+backend/.local-cognito.json.
 """
 
 from __future__ import annotations
 
 import json
 import os
-import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 STATE_PATH = ROOT / ".local-state.json"
-PASSWORD_PATH = ROOT / ".local-password"
+SESSIONS_PATH = ROOT / ".local-sessions.json"
+COGNITO_PATH = ROOT / ".local-cognito.json"
 
 
-def _ensure_password() -> str:
-    existing = os.environ.get("POTTY_LOCAL_PASSWORD")
-    if existing:
-        return existing
-    if PASSWORD_PATH.exists():
-        password = PASSWORD_PATH.read_text(encoding="utf-8").strip()
-    else:
-        password = secrets.token_urlsafe(12)
-        PASSWORD_PATH.write_text(password + "\n", encoding="utf-8")
-    os.environ["POTTY_LOCAL_PASSWORD"] = password
-    return password
+def _load_cognito() -> None:
+    if os.environ.get("COGNITO_USER_POOL_ID") and os.environ.get("COGNITO_CLIENT_ID"):
+        return
+    if not COGNITO_PATH.exists():
+        print(
+            "No Cognito config. Sign-in stays unavailable until "
+            "terraform writes backend/.local-cognito.json.",
+            flush=True,
+        )
+        return
+    data = json.loads(COGNITO_PATH.read_text(encoding="utf-8"))
+    os.environ["COGNITO_USER_POOL_ID"] = str(data["userPoolId"])
+    os.environ["COGNITO_CLIENT_ID"] = str(data["userPoolClientId"])
+    os.environ["COGNITO_REGION"] = str(data.get("region") or "us-east-1")
 
 
 def main() -> None:
     os.environ["POTTY_ENV"] = "local"
     os.environ["POTTY_STATE_PATH"] = str(STATE_PATH)
-    os.environ.setdefault("POTTY_LOCAL_TOKEN_KEY", "local-dev-token-key")
+    os.environ["POTTY_SESSIONS_PATH"] = str(SESSIONS_PATH)
     os.environ.setdefault("CORS_ORIGIN", "http://localhost:4200")
-    password = _ensure_password()
+    _load_cognito()
 
     from potty_train.handler import handler
 
@@ -80,7 +85,6 @@ def main() -> None:
 
     server = ThreadingHTTPServer(("127.0.0.1", 8787), AppHandler)
     print("Potty Log API at http://127.0.0.1:8787", flush=True)
-    print(f"Local password: {password}", flush=True)
     print(f"State file: {STATE_PATH}", flush=True)
     try:
         server.serve_forever()

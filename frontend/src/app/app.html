@@ -19,9 +19,12 @@
 </main>
 
 @if (showNav()) {
-  <nav class="dock" aria-label="Sections">
+  <nav class="dock" [class.with-people]="owner()" aria-label="Sections">
     <a routerLink="/now" routerLinkActive="active">Now</a>
     <a routerLink="/sheet" routerLinkActive="active">Sheet</a>
+    @if (owner()) {
+      <a routerLink="/people" routerLinkActive="active">People</a>
+    }
     <a routerLink="/guide" routerLinkActive="active">Guide</a>
     <a routerLink="/settings" routerLinkActive="active">Settings</a>
   </nav>

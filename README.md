@@ -19,7 +19,7 @@ python -m pip install -r backend/requirements-dev.txt
 python backend/local_server.py
 ```
 
-The API prints a local password and stores it in `backend/.local-password`. That file is gitignored.
+Sign-in uses the Cognito user pool. Terraform writes the pool ids to `backend/.local-cognito.json` (gitignored). Without that file the API still runs, and the sign-in page reports that sign-in is not configured.
 
 ```powershell
 cd frontend
@@ -30,44 +30,33 @@ Open http://localhost:4200 . The dev server proxies `/api` to http://127.0.0.1:8
 
 ## Deploy to AWS
 
-The stack is CDK, in `infra/`.
+The live stack is Terraform, in `infra/terraform/`.
 
-- **S3** `Ui` holds the Angular build. It is private. CloudFront reads it with origin access control.
-- **S3** `Data` holds one versioned object, `state/potty-log.json`. Public access is blocked, TLS is required, and the bucket is kept if you delete the stack.
-- **Lambda** runs `potty_train.handler.handler`. Its role can `s3:GetObject` and `s3:PutObject` on that one key, and `secretsmanager:GetSecretValue` on the two secrets below. Nothing else.
-- **Secrets Manager** stores the site password and the separate key used to sign login tokens.
-- **CloudFront** serves the site and `/api/*`. A viewer-request function returns 403 for every IP outside the allowlist. The function URL itself uses IAM auth, and only this distribution can invoke it, so the API is not reachable by skipping CloudFront.
-- Login is the second check, for anyone who is already on an allowed network.
+- **S3** `ui` holds the Angular build. It is private. CloudFront reads it with origin access control.
+- **S3** `data` holds one versioned object, `state/potty-log.json`. Public access is blocked, TLS is required, and the bucket is kept if you delete the stack.
+- **Lambda** runs `potty_train.handler.handler`. It can read and write that one object, read the VAPID secret, and manage the two reminder schedules.
+- **Cognito** is the user directory. The username is the email address. Public sign-up is off. The owner invites someone from Settings, and Cognito emails a temporary password. MFA is a TOTP authenticator app. The refresh token lasts 7 days from login. The browser holds tokens in cookies.
+- **CloudFront** serves the site and `/api/*` to viewers in the United States. The geographic restriction is CloudFront's built-in allow list. The API origin checks a shared header, so skipping CloudFront does not reach the Lambda.
 
-CloudFront has to be deployed from a region that can create it. The app defaults to `us-east-1`.
-
-Install the AWS CLI, sign in so `aws sts get-caller-identity` works, then:
+CloudFront is created from `us-east-1`.
 
 ```powershell
 cd frontend
 npm ci
 npm run build
-cd ../infra
-python -m pip install -r requirements.txt
-npx aws-cdk bootstrap
-npx aws-cdk deploy -c allowedCidrs=YOUR.IP.ADDRESS/32
+cd ..
+python backend/package_lambda.py
+cd infra/terraform
+terraform apply
 ```
 
-`https://checkip.amazonaws.com` shows the IPv4 address you are on right now. Home addresses are often stable. A phone on cellular data usually is not, so the allowlist is a poor fit for mobile data unless you add that address again when it changes. Several networks are fine: `-c allowedCidrs=1.2.3.4/32,5.6.7.0/24`. If your own browser gets a 403, it may be connecting over IPv6; add that address as well. An IPv6 entry has to be the exact address.
+Open the `site_url` output. The UI uses hash routes (`/#/now`), so a refresh stays on the page you were on.
 
-Changing the allowlist means deploying again with the new value.
+New accounts are invite-only. The owner sends the invite from Settings. Every account sees the same log.
 
-The password is not printed. After deploy:
+Cost is mostly CloudFront, plus a little Lambda, S3, and Cognito. There is no WAF. Expect a few dollars a month for a single household, plus whatever CloudFront serves. The user pool is on the Essentials plan because that is the plan that can rotate refresh tokens. Essentials and Lite both include 10,000 monthly active users at no charge, so a household stays inside that allowance. Sign-up and reset emails use Cognito's built-in mailer.
 
-```powershell
-aws secretsmanager get-secret-value --secret-id <PasswordSecretName output> --query SecretString --output text
-```
-
-Open the `SiteUrl` output. The UI uses hash routes (`/#/now`), so a refresh stays on the page you were on.
-
-Cost is mostly CloudFront and a little Lambda and S3. There is no WAF. Expect a few dollars a month for a single household, plus whatever CloudFront serves.
-
-Deleting the stack does not delete the data bucket or the secrets. Empty and delete those yourself if you really want them gone.
+Deleting the stack does not delete the data bucket, the user pool, or the secrets. Empty and delete those yourself if you really want them gone.
 
 ## Tests
 

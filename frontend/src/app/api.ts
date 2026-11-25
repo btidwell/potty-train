@@ -1,24 +1,29 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { AppState } from './models';
+import {
+  accessToken,
+  currentDeviceKey,
+  deviceIsRemembered,
+  deviceLabel,
+  endSession,
+  recordAuthenticator,
+  rememberThisDevice,
+  signedInAsOwner,
+} from './auth';
+import { AppState, BrowserSession, HouseholdUser } from './models';
 
-function readSavedToken(): string {
-  const token = localStorage.getItem('potty_token') ?? sessionStorage.getItem('potty_token') ?? '';
-  if (token) {
-    localStorage.setItem('potty_token', token);
-  }
-  sessionStorage.removeItem('potty_token');
-  return token;
-}
+const SESSION_COOKIE = 'potty-session';
+const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
 
 @Injectable({ providedIn: 'root' })
 export class Api {
   private readonly router = inject(Router);
-  readonly token = signal(readSavedToken());
+  readonly signedIn = signal(false);
   readonly state = signal<AppState | null>(null);
   readonly error = signal('');
   readonly busy = signal(false);
   private writeVersion = 0;
+  private ownerCheck: Promise<boolean> | null = null;
 
   clientNow(): string {
     const date = new Date();
@@ -30,30 +35,148 @@ export class Api {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}${offset}`;
   }
 
-  async login(password: string): Promise<string> {
-    const response = await fetch('/api/login', {
+  canInvite(): Promise<boolean> {
+    if (!this.ownerCheck) {
+      this.ownerCheck = signedInAsOwner().then((allowed) => {
+        if (!this.signedIn()) {
+          this.ownerCheck = null;
+        }
+        return allowed;
+      });
+    }
+    return this.ownerCheck;
+  }
+
+  async listUsers(): Promise<HouseholdUser[] | null> {
+    const body = await this.send<{ users: HouseholdUser[] }>('GET', '/api/users');
+    return body ? body.users : null;
+  }
+
+  async invite(email: string): Promise<{ ok: boolean; message: string }> {
+    const response = await fetch('/api/invites', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password, now: this.clientNow() }),
+      headers: { ...(await this.headers()), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return body.error || 'Could not sign in.';
+    if (response.status === 401) {
+      this.logout();
+      return { ok: false, message: 'Sign in again.' };
     }
-    this.token.set(body.token);
-    localStorage.setItem('potty_token', body.token);
-    sessionStorage.removeItem('potty_token');
+    if (!response.ok) {
+      return { ok: false, message: body.error || 'Could not send the invitation.' };
+    }
+    return { ok: true, message: body.message || 'Invitation sent.' };
+  }
+
+  async restore(): Promise<boolean> {
+    const token = await this.sessionToken();
+    if (!token) {
+      return false;
+    }
+    if (!readSessionId()) {
+      const opened = await this.openSession(false);
+      if (!opened.ok) {
+        return false;
+      }
+    }
     this.error.set('');
-    await this.refresh();
-    return '';
+    void recordAuthenticator();
+    return true;
+  }
+
+  async openSession(remember: boolean): Promise<{ ok: boolean; remembered: boolean }> {
+    let deviceKey = '';
+    let remembered = false;
+    try {
+      if (remember) {
+        deviceKey = await rememberThisDevice();
+        remembered = Boolean(deviceKey);
+      } else {
+        deviceKey = await currentDeviceKey();
+        remembered = await deviceIsRemembered(deviceKey);
+      }
+    } catch {
+      deviceKey = '';
+      remembered = false;
+    }
+    const payload = JSON.stringify({ label: deviceLabel(), device_key: deviceKey, remembered });
+    const response = await fetch('/api/sessions', {
+      method: 'POST',
+      headers: {
+        ...(await this.headers()),
+        'Content-Type': 'application/json',
+        'x-amz-content-sha256': await payloadHash(payload),
+      },
+      body: payload,
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || !body.session?.id) {
+      return { ok: false, remembered: false };
+    }
+    writeSessionId(String(body.session.id));
+    return { ok: true, remembered: Boolean(body.session.remembered) };
+  }
+
+  currentSessionId(): string {
+    return readSessionId();
+  }
+
+  async listSessions(): Promise<BrowserSession[] | null> {
+    const body = await this.send<{ sessions: BrowserSession[] }>('GET', '/api/sessions');
+    return body ? body.sessions : null;
+  }
+
+  async revokeSession(id: string): Promise<boolean> {
+    const current = readSessionId();
+    const response = await fetch(`/api/sessions/${id}`, {
+      method: 'DELETE',
+      headers: await this.headers(),
+    });
+    if (response.status === 401) {
+      this.logout();
+      return false;
+    }
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      this.error.set(body.error || 'Could not sign that device out.');
+      return false;
+    }
+    if (id === current) {
+      await this.finishLogout();
+    }
+    return true;
   }
 
   logout(): void {
-    this.token.set('');
+    this.ownerCheck = null;
+    this.signedIn.set(false);
     this.state.set(null);
-    localStorage.removeItem('potty_token');
-    sessionStorage.removeItem('potty_token');
-    void this.router.navigateByUrl('/login');
+    const id = readSessionId();
+    void this.revokeThenLeave(id);
+  }
+
+  private async revokeThenLeave(id: string): Promise<void> {
+    if (id) {
+      const token = await accessToken().catch(() => '');
+      await fetch(`/api/sessions/${id}`, {
+        method: 'DELETE',
+        headers: {
+          ...(token ? { 'X-Potty-Authorization': `Bearer ${token}` } : {}),
+          'X-Potty-Session': id,
+        },
+      }).catch(() => undefined);
+    }
+    await this.finishLogout();
+  }
+
+  private async finishLogout(): Promise<void> {
+    clearSessionId();
+    this.ownerCheck = null;
+    this.signedIn.set(false);
+    this.state.set(null);
+    await endSession().catch(() => undefined);
+    await this.router.navigateByUrl('/login');
   }
 
   async refresh(): Promise<void> {
@@ -89,7 +212,7 @@ export class Api {
   }
 
   async downloadCsv(): Promise<void> {
-    const response = await fetch('/api/export.csv', { headers: this.headers() });
+    const response = await fetch('/api/export.csv', { headers: await this.headers() });
     if (response.status === 401) {
       this.logout();
       return;
@@ -107,11 +230,26 @@ export class Api {
     URL.revokeObjectURL(url);
   }
 
-  private headers(): Record<string, string> {
+  private async sessionToken(forceRefresh = false): Promise<string> {
+    try {
+      const token = await accessToken(forceRefresh);
+      this.signedIn.set(Boolean(token));
+      return token;
+    } catch {
+      this.signedIn.set(false);
+      return '';
+    }
+  }
+
+  private async headers(forceRefresh = false): Promise<Record<string, string>> {
     const headers: Record<string, string> = {};
-    const token = this.token();
+    const token = await this.sessionToken(forceRefresh);
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers['X-Potty-Authorization'] = `Bearer ${token}`;
+    }
+    const sessionId = readSessionId();
+    if (sessionId) {
+      headers['X-Potty-Session'] = sessionId;
     }
     return headers;
   }
@@ -120,19 +258,31 @@ export class Api {
     method: string,
     path: string,
     payload?: Record<string, unknown>,
-    options?: { quiet?: boolean },
+    options?: { quiet?: boolean; retried?: boolean },
   ): Promise<T | null> {
     const quiet = options?.quiet === true;
     if (!quiet) {
       this.busy.set(true);
     }
     try {
+      const bodyText = payload ? JSON.stringify(payload) : undefined;
       const response = await fetch(path, {
         method,
-        headers: { ...this.headers(), ...(payload ? { 'Content-Type': 'application/json' } : {}) },
-        body: payload ? JSON.stringify(payload) : undefined,
+        headers: {
+          ...(await this.headers()),
+          ...(bodyText
+            ? { 'Content-Type': 'application/json', 'x-amz-content-sha256': await payloadHash(bodyText) }
+            : {}),
+        },
+        body: bodyText,
       });
       if (response.status === 401) {
+        if (!options?.retried) {
+          const refreshed = await this.sessionToken(true);
+          if (refreshed) {
+            return this.send(method, path, payload, { ...options, retried: true });
+          }
+        }
         if (!quiet) {
           this.error.set('');
         }
@@ -161,4 +311,24 @@ export class Api {
       }
     }
   }
+}
+
+async function payloadHash(body: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function readSessionId(): string {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${SESSION_COOKIE}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function writeSessionId(id: string): void {
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${SESSION_COOKIE}=${encodeURIComponent(id)}; Path=/; Max-Age=${SESSION_MAX_AGE}; SameSite=Strict${secure}`;
+}
+
+function clearSessionId(): void {
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Strict${secure}`;
 }

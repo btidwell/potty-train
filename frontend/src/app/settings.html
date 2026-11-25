@@ -47,3 +47,63 @@
 } @else {
   <p class="lede">Loading settings…</p>
 }
+
+<section class="card settings">
+  <h2>Signed-in devices</h2>
+  <p class="hint">
+    Each browser stays signed in for 7 days. A remembered device can skip the authenticator code
+    the next time it signs in. Signing a device out logs it out and asks for the authenticator code again.
+  </p>
+  @if (sessions(); as rows) {
+    <div class="people-list">
+      @for (device of rows; track device.id) {
+        <article class="person">
+          <h3>{{ device.label }}</h3>
+          <p class="badges">
+            @if (device.id === api.currentSessionId()) {
+              <span class="badge">This device</span>
+            }
+            <span class="badge" [class.wait]="!device.remembered">
+              {{ device.remembered ? 'Authenticator remembered' : 'Authenticator required next time' }}
+            </span>
+          </p>
+          <p class="hint">Signed in {{ when(device.created_at) }} · Last active {{ when(device.last_seen) }}</p>
+          @if (device.ip) {
+            <p class="hint">Last seen from {{ address(device.ip) }}</p>
+          }
+          @if (confirmingSession() === device.id) {
+            <div class="row">
+              <button type="button" class="danger" (click)="signOutDevice(device.id)" [disabled]="api.busy()">Sign out this device</button>
+              <button type="button" (click)="confirmingSession.set(null)">Keep</button>
+            </div>
+          } @else {
+            <button type="button" (click)="confirmingSession.set(device.id)">Sign out</button>
+          }
+        </article>
+      } @empty {
+        <p class="lede">No browsers are signed in.</p>
+      }
+    </div>
+  } @else {
+    <p class="lede">Loading devices…</p>
+  }
+</section>
+
+@if (canInvite()) {
+  <form class="card settings" (ngSubmit)="invite($event)">
+    <h2>Invite</h2>
+    <p class="hint">
+      Only you can add someone. They get an email with a temporary password, then choose their own
+      password and set up an authenticator. The temporary password lasts 7 days. Sending the same
+      address again resends that email if they have not finished signing in.
+    </p>
+    <label for="invite-email">Email
+      <input id="invite-email" name="email" type="email" autocomplete="off" [(ngModel)]="inviteEmail" required />
+    </label>
+    @if (inviteMessage()) {
+      <p class="banner" [class.error]="inviteTone() === 'error'" [class.ok]="inviteTone() === 'ok'" role="status">{{ inviteMessage() }}</p>
+    }
+    <button class="primary" type="submit" [disabled]="api.busy()">Send invite</button>
+    <p class="hint"><a routerLink="/people">See accounts and activity</a></p>
+  </form>
+}

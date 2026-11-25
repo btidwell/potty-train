@@ -128,8 +128,16 @@ def update_settings(state: dict[str, Any], payload: dict[str, Any]) -> None:
     state["settings"] = fields
 
 
-def create_entry(state: dict[str, Any], payload: dict[str, Any], now: datetime) -> dict[str, Any]:
+def create_entry(
+    state: dict[str, Any],
+    payload: dict[str, Any],
+    now: datetime,
+    recorded_by: str = "",
+) -> dict[str, Any]:
     entry = _entry_from_payload(state, payload, now)
+    name = recorded_by.strip()
+    if name:
+        entry["recorded_by"] = name
     state["entries"].append(entry)
     _finish_sit_if_needed(state, entry, now)
     return entry
@@ -149,6 +157,8 @@ def update_entry(state: dict[str, Any], entry_id: str, payload: dict[str, Any], 
     }
     refreshed = _entry_from_payload(state, merged, now, seq=entry["seq"], entry_id=entry["id"])
     refreshed["created_at"] = entry["created_at"]
+    if entry.get("recorded_by"):
+        refreshed["recorded_by"] = entry["recorded_by"]
     if "logged_interval" in entry and entry["logged_interval"] is not None:
         refreshed["logged_interval"] = int(entry["logged_interval"])
     index = state["entries"].index(entry)

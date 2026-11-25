@@ -13,7 +13,10 @@ _crop_pdf.py
 _cdk_inspect.py
 backend/.local-state.json
 backend/.local-state.tmp
+backend/.local-sessions.json
+backend/.local-sessions.tmp
 backend/.local-password
+backend/.local-cognito.json
 .DS_Store
 .terraform/
 *.tfstate

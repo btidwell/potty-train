@@ -29,19 +29,23 @@ resource "aws_iam_role_policy" "api" {
         Sid      = "ReadWriteLogObject"
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:PutObject"]
-        Resource = "${aws_s3_bucket.data.arn}/state/potty-log.json"
+        Resource = [
+          "${aws_s3_bucket.data.arn}/state/potty-log.json",
+          "${aws_s3_bucket.data.arn}/state/sessions.json",
+        ]
       },
       {
-        Sid      = "ReadPasswordSecret"
-        Effect   = "Allow"
-        Action   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
-        Resource = aws_secretsmanager_secret.password.arn
-      },
-      {
-        Sid      = "ReadTokenKeySecret"
-        Effect   = "Allow"
-        Action   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
-        Resource = aws_secretsmanager_secret.token_key.arn
+        Sid    = "InviteUsers"
+        Effect = "Allow"
+        Action = [
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminForgetDevice",
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:AdminSetUserMFAPreference",
+          "cognito-idp:AdminListGroupsForUser",
+          "cognito-idp:ListUsers",
+        ]
+        Resource = aws_cognito_user_pool.users.arn
       },
       {
         Sid      = "ReadVapidSecret"
