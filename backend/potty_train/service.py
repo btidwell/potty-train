@@ -190,9 +190,15 @@ def schedule_action(state: dict[str, Any], action: str, now: datetime) -> None:
         if not active:
             raise ValueError("No sit is in progress.")
         schedule["active_sit"] = None
-        schedule["running"] = True
-        schedule["next_sit_at"] = active["preserved_next_sit_at"]
-        schedule["timer_interval_minutes"] = active["preserved_timer_interval_minutes"]
+        preserved = active.get("preserved_next_sit_at")
+        if preserved:
+            schedule["running"] = True
+            schedule["next_sit_at"] = preserved
+            schedule["timer_interval_minutes"] = active.get("preserved_timer_interval_minutes")
+        else:
+            schedule["running"] = False
+            schedule["next_sit_at"] = None
+            schedule["timer_interval_minutes"] = None
         return
 
     raise ValueError(f"Unknown schedule action: {action}")
@@ -204,11 +210,6 @@ def start_sit(state: dict[str, Any], kind: str, now: datetime) -> None:
     schedule = state["schedule"]
     if schedule["active_sit"]:
         raise ValueError("A sit is already in progress.")
-    if not schedule["running"]:
-        interval = _interval_now(state)
-        schedule["running"] = True
-        schedule["timer_interval_minutes"] = interval
-        schedule["next_sit_at"] = now.isoformat()
     schedule["active_sit"] = {
         "started_at": now.isoformat(),
         "kind": kind,
@@ -228,10 +229,15 @@ def _finish_sit_if_needed(state: dict[str, Any], entry: dict[str, Any], now: dat
     schedule["active_sit"] = None
     new_interval = _interval_now(state)
     if entry["kind"] == "accident":
-        preserved = active["preserved_next_sit_at"]
+        preserved = active.get("preserved_next_sit_at")
+        if not preserved:
+            schedule["running"] = False
+            schedule["next_sit_at"] = None
+            schedule["timer_interval_minutes"] = None
+            return
         schedule["running"] = True
-        schedule["timer_interval_minutes"] = active["preserved_timer_interval_minutes"] or new_interval
-        if preserved and _parse_iso(preserved) > now:
+        schedule["timer_interval_minutes"] = active.get("preserved_timer_interval_minutes") or new_interval
+        if _parse_iso(preserved) > now:
             schedule["next_sit_at"] = preserved
         else:
             schedule["next_sit_at"] = now.isoformat()

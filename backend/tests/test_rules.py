@@ -225,6 +225,39 @@ def test_accident_sit_does_not_reset_the_timer():
     assert state["schedule"]["next_sit_at"] == original
 
 
+def test_cancel_sit_from_ready_returns_to_ready():
+    state = default_state()
+    start_sit(state, "scheduled", NOW)
+    schedule_action(state, "cancel_sit", NOW + timedelta(minutes=1))
+    assert state["schedule"]["active_sit"] is None
+    assert state["schedule"]["running"] is False
+    assert state["schedule"]["next_sit_at"] is None
+    assert state["schedule"]["timer_interval_minutes"] is None
+
+
+def test_cancel_sit_restores_the_running_off_timer():
+    for kind in ("scheduled", "asked", "accident"):
+        state = default_state()
+        schedule_action(state, "start_timer", NOW)
+        original = state["schedule"]["next_sit_at"]
+        interval = state["schedule"]["timer_interval_minutes"]
+        start_sit(state, kind, NOW + timedelta(minutes=4))
+        schedule_action(state, "cancel_sit", NOW + timedelta(minutes=6))
+        assert state["schedule"]["running"] is True, kind
+        assert state["schedule"]["next_sit_at"] == original, kind
+        assert state["schedule"]["timer_interval_minutes"] == interval, kind
+        assert state["schedule"]["active_sit"] is None, kind
+
+        state = default_state()
+        schedule_action(state, "start_timer", NOW)
+        original = state["schedule"]["next_sit_at"]
+        start_sit(state, kind, NOW + timedelta(minutes=4))
+        schedule_action(state, "cancel_sit", NOW + timedelta(minutes=30))
+        assert state["schedule"]["running"] is True, kind
+        assert state["schedule"]["next_sit_at"] == original, kind
+        assert state["schedule"]["active_sit"] is None, kind
+
+
 def test_scheduled_sit_starts_the_next_interval():
     state = default_state()
     start_sit(state, "scheduled", NOW)
