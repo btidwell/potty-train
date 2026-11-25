@@ -75,6 +75,9 @@ export class SheetPage {
       accident_wet: entry.accident_wet,
       comment: entry.comment,
     });
+    // The editor is rendered above the table. On a long sheet that puts it
+    // outside the viewport, so the click looks like it did nothing.
+    setTimeout(() => document.getElementById('row-editor')?.scrollIntoView({ block: 'start' }));
   }
 
   protected cancel(): void {
