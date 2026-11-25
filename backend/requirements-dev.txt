@@ -1,2 +1,3 @@
 pytest==8.4.2
 tzdata==2025.2
+-r requirements-lambda.txt

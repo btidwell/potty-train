@@ -42,6 +42,66 @@ resource "aws_iam_role_policy" "api" {
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
         Resource = aws_secretsmanager_secret.token_key.arn
+      },
+      {
+        Sid      = "ReadVapidSecret"
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+        Resource = aws_secretsmanager_secret.vapid.arn
+      },
+      {
+        Sid    = "ManageTimerSchedules"
+        Effect = "Allow"
+        Action = [
+          "scheduler:CreateSchedule",
+          "scheduler:UpdateSchedule",
+          "scheduler:DeleteSchedule",
+          "scheduler:GetSchedule",
+        ]
+        Resource = "arn:aws:scheduler:us-east-1:143977713810:schedule/default/potty-log-*"
+      },
+      {
+        Sid      = "PassSchedulerRole"
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = aws_iam_role.scheduler.arn
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "scheduler.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "scheduler" {
+  name = "potty-log-scheduler"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = { Service = "scheduler.amazonaws.com" }
+        Action    = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "scheduler" {
+  name = "potty-log-scheduler"
+  role = aws_iam_role.scheduler.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "InvokeApi"
+        Effect   = "Allow"
+        Action   = "lambda:InvokeFunction"
+        Resource = "arn:aws:lambda:us-east-1:143977713810:function:potty-log-api"
       }
     ]
   })

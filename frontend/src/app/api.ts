@@ -71,6 +71,15 @@ export class Api {
     return true;
   }
 
+  async postQuiet(path: string, payload: Record<string, unknown>): Promise<boolean> {
+    const next = await this.send<AppState>('POST', path, payload, { quiet: true });
+    if (!next) {
+      return false;
+    }
+    this.state.set(next);
+    return true;
+  }
+
   async downloadCsv(): Promise<void> {
     const response = await fetch('/api/export.csv', { headers: this.headers() });
     if (response.status === 401) {
@@ -99,8 +108,16 @@ export class Api {
     return headers;
   }
 
-  private async send<T>(method: string, path: string, payload?: Record<string, unknown>): Promise<T | null> {
-    this.busy.set(true);
+  private async send<T>(
+    method: string,
+    path: string,
+    payload?: Record<string, unknown>,
+    options?: { quiet?: boolean },
+  ): Promise<T | null> {
+    const quiet = options?.quiet === true;
+    if (!quiet) {
+      this.busy.set(true);
+    }
     try {
       const response = await fetch(path, {
         method,
@@ -108,22 +125,32 @@ export class Api {
         body: payload ? JSON.stringify(payload) : undefined,
       });
       if (response.status === 401) {
-        this.error.set('');
+        if (!quiet) {
+          this.error.set('');
+        }
         this.logout();
         return null;
       }
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        this.error.set(body.error || 'Something went wrong.');
+        if (!quiet) {
+          this.error.set(body.error || 'Something went wrong.');
+        }
         return null;
       }
-      this.error.set('');
+      if (!quiet) {
+        this.error.set('');
+      }
       return body as T;
     } catch {
-      this.error.set('Cannot reach the log. Check that the app is running.');
+      if (!quiet) {
+        this.error.set('Cannot reach the log. Check that the app is running.');
+      }
       return null;
     } finally {
-      this.busy.set(false);
+      if (!quiet) {
+        this.busy.set(false);
+      }
     }
   }
 }

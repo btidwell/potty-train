@@ -12,6 +12,8 @@ export class NowPage {
   protected readonly nowMs = signal(Date.now());
   protected readonly soundOn = signal(localStorage.getItem('potty_chime') !== 'off');
   protected readonly notifyPermission = signal<NotificationPermission | 'unsupported'>(this.currentPermission());
+  protected readonly pushReady = signal(false);
+  protected readonly pushFailure = signal('');
   protected urine = false;
   protected bm = false;
   protected wet = false;
@@ -23,6 +25,7 @@ export class NowPage {
   private notifiedOff = false;
   private notifiedSit = false;
   private workerReady?: Promise<ServiceWorkerRegistration>;
+  private pushInflight?: Promise<void>;
 
   protected readonly state = computed(() => this.api.state());
   protected readonly sitting = computed(() => this.state()?.schedule.active_sit ?? null);
@@ -62,12 +65,7 @@ export class NowPage {
       this.maybeNotify();
     }, 250);
     destroyRef.onDestroy(() => window.clearInterval(timer));
-    if (this.notifyPermission() === 'granted') {
-      void this.ensureWorker();
-    }
-    if (!this.api.state()) {
-      void this.api.refresh();
-    }
+    void this.start();
   }
 
   protected clock(ms: number): string {
@@ -92,9 +90,17 @@ export class NowPage {
   }
 
   protected notifyLabel(): string {
-    switch (this.notifyPermission()) {
-      case 'granted':
-        return 'Notifications are on';
+    if (this.pushFailure()) {
+      return this.pushFailure();
+    }
+    if (this.pushReady()) {
+      return 'Notifications are on';
+    }
+    const permission = this.notifyPermission();
+    if (permission === 'granted' && !this.api.state()?.push?.public_key) {
+      return 'Notifications are on';
+    }
+    switch (permission) {
       case 'denied':
         return 'Notifications blocked';
       case 'unsupported':
@@ -105,22 +111,21 @@ export class NowPage {
   }
 
   protected async enableNotifications(): Promise<void> {
-    if (this.notifyPermission() !== 'default') {
+    if (this.pushReady() || this.notifyPermission() === 'denied' || this.notifyPermission() === 'unsupported') {
       return;
     }
     if (typeof Notification === 'undefined' || !('serviceWorker' in navigator)) {
       this.notifyPermission.set('unsupported');
       return;
     }
-    const permission = await Notification.requestPermission();
-    this.notifyPermission.set(permission);
-    if (permission === 'granted') {
-      try {
-        await this.ensureWorker();
-      } catch {
-        this.workerReady = undefined;
+    if (Notification.permission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      this.notifyPermission.set(permission);
+      if (permission !== 'granted') {
+        return;
       }
     }
+    await this.subscribeToPush();
   }
 
   protected async startTimer(): Promise<void> {
@@ -186,6 +191,60 @@ export class NowPage {
       return 'unsupported';
     }
     return Notification.permission;
+  }
+
+  private async start(): Promise<void> {
+    if (!this.api.state()) {
+      await this.api.refresh();
+    }
+    if (this.notifyPermission() === 'granted') {
+      await this.subscribeToPush();
+    }
+  }
+
+  private subscribeToPush(): Promise<void> {
+    this.pushInflight ??= this.subscribeToPushOnce().finally(() => {
+      this.pushInflight = undefined;
+    });
+    return this.pushInflight;
+  }
+
+  private async subscribeToPushOnce(): Promise<void> {
+    if (!this.api.state()) {
+      await this.api.refresh();
+    }
+    const publicKey = this.api.state()?.push?.public_key ?? '';
+    if (!publicKey) {
+      return;
+    }
+    this.pushFailure.set('');
+    try {
+      const registration = await this.ensureWorker();
+      await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: decodeBase64Url(publicKey),
+      });
+      const saved = await this.api.postQuiet(
+        '/api/push/subscribe',
+        subscription.toJSON() as Record<string, unknown>,
+      );
+      if (!saved) {
+        this.pushReady.set(false);
+        this.pushFailure.set('Notifications failed');
+        return;
+      }
+      this.pushReady.set(true);
+    } catch {
+      this.pushReady.set(false);
+      this.workerReady = undefined;
+      this.pushFailure.set(this.installedApp() ? 'Notifications failed' : 'Install to Home Screen first');
+    }
+  }
+
+  private installedApp(): boolean {
+    const nav = navigator as Navigator & { standalone?: boolean };
+    return window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true;
   }
 
   private ensureWorker(): Promise<ServiceWorkerRegistration> {
@@ -301,4 +360,15 @@ export class NowPage {
       osc.stop(at + 0.5);
     });
   }
+}
+
+function decodeBase64Url(value: string): ArrayBuffer {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes.buffer;
 }
