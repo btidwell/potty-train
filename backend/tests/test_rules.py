@@ -2,6 +2,8 @@ import csv
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
+
 from potty_train.rules import streak_status
 from potty_train.service import (
     create_entry,
@@ -201,6 +203,16 @@ def test_streak_status_matches_public_view():
     status = streak_status(state["entries"], state["settings"])
     assert status["dry_streak"] == 1
     assert status["dry_streak_has_void"] is True
+
+
+def test_start_timer_does_not_restart_a_running_timer():
+    state = default_state()
+    schedule_action(state, "start_timer", NOW)
+    original = state["schedule"]["next_sit_at"]
+    with pytest.raises(ValueError, match="already running"):
+        schedule_action(state, "start_timer", NOW + timedelta(minutes=4))
+    assert state["schedule"]["running"] is True
+    assert state["schedule"]["next_sit_at"] == original
 
 
 def test_accident_sit_does_not_reset_the_timer():

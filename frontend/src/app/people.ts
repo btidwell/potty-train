@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Api } from './api';
 import { Entry, HouseholdUser } from './models';
@@ -16,6 +16,8 @@ export class PeoplePage {
   protected readonly activity = computed(() => [...(this.api.state()?.entries ?? [])].reverse());
 
   constructor() {
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(this.api.registerViewReload(() => this.load(true)));
     void this.load();
   }
 
@@ -72,7 +74,10 @@ export class PeoplePage {
     return parts.length ? parts.join(', ') : 'dry';
   }
 
-  private async load(): Promise<void> {
+  private async load(silent = false): Promise<void> {
+    if (!silent) {
+      this.phase.set('loading');
+    }
     const allowed = await this.api.canInvite();
     if (!allowed) {
       this.phase.set('denied');
@@ -83,7 +88,7 @@ export class PeoplePage {
       this.phase.set('error');
       return;
     }
-    if (!this.api.state()) {
+    if (!silent && !this.api.state()) {
       await this.api.refresh();
     }
     this.users.set(users);

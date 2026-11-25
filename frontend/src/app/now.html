@@ -77,8 +77,8 @@
         <p>Start the timer when training for the day begins. The first sit can also happen right now.</p>
       </section>
       <div class="actions">
-        <button class="primary" type="button" (click)="startTimer()">Start {{ log.derived.current_interval_minutes }}-min timer</button>
-        <button type="button" (click)="beginSit('scheduled')">Sit now</button>
+        <button class="primary" type="button" (click)="startTimer()" [disabled]="api.busy()">Start {{ log.derived.current_interval_minutes }}-min timer</button>
+        <button type="button" (click)="beginSit('scheduled')" [disabled]="api.busy()">Sit now</button>
       </div>
     } @else {
       <section class="hero" [class.due]="offLeft() <= 0">
@@ -89,12 +89,12 @@
         }
       </section>
       <div class="actions">
-        <button class="primary" type="button" (click)="beginSit('scheduled')">
+        <button class="primary" type="button" (click)="beginSit('scheduled')" [disabled]="api.busy()">
           {{ offLeft() <= 0 ? 'Start ' + log.settings.sit_minutes + '-minute sit' : 'Start sit early' }}
         </button>
-        <button type="button" (click)="beginSit('asked')">Child asked to go</button>
-        <button type="button" (click)="beginSit('accident')">Accident — sit now</button>
-        <button type="button" class="quiet" (click)="stopTimer()">Stop timer</button>
+        <button type="button" (click)="beginSit('asked')" [disabled]="api.busy()">Child asked to go</button>
+        <button type="button" (click)="beginSit('accident')" [disabled]="api.busy()">Accident — sit now</button>
+        <button type="button" class="quiet" (click)="stopTimer()" [disabled]="api.busy()">Stop timer</button>
       </div>
     }
   }

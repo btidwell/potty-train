@@ -22,7 +22,11 @@ export class Api {
   readonly state = signal<AppState | null>(null);
   readonly error = signal('');
   readonly busy = signal(false);
-  private writeVersion = 0;
+  // A refresh that started before a save finished must not paint the old log
+  // back over the timer that save just stored.
+  private commit = 0;
+  private writes = 0;
+  private viewReloads: Array<() => Promise<void>> = [];
   private ownerCheck: Promise<boolean> | null = null;
 
   clientNow(): string {
@@ -179,33 +183,61 @@ export class Api {
     await this.router.navigateByUrl('/login');
   }
 
-  async refresh(): Promise<void> {
-    const version = this.writeVersion;
-    const next = await this.send<AppState>('GET', '/api/state');
-    if (next && version === this.writeVersion) {
+  registerViewReload(reload: () => Promise<void>): () => void {
+    this.viewReloads.push(reload);
+    return () => {
+      this.viewReloads = this.viewReloads.filter((item) => item !== reload);
+    };
+  }
+
+  async refresh(options?: { views?: boolean; keepError?: boolean; quiet?: boolean }): Promise<void> {
+    const seen = this.commit;
+    const kept = options?.keepError ? this.error() : '';
+    const next = await this.send<AppState>('GET', '/api/state', undefined, { quiet: options?.quiet === true });
+    if (next && seen === this.commit && this.writes === 0) {
       this.state.set(next);
+    }
+    if (options?.keepError && kept && !this.error()) {
+      this.error.set(kept);
+    }
+    if (options?.views && this.writes === 0) {
+      await Promise.all(this.viewReloads.map((reload) => reload().catch(() => undefined)));
     }
   }
 
   async mutate(method: string, path: string, payload: Record<string, unknown> = {}): Promise<boolean> {
-    const version = ++this.writeVersion;
-    const next = await this.send<AppState>(method, path, { ...payload, now: this.clientNow() });
-    if (!next) {
-      return false;
+    this.writes++;
+    let reload = false;
+    try {
+      const seen = this.commit;
+      const next = await this.send<AppState>(method, path, { ...payload, now: this.clientNow() });
+      if (!next) {
+        reload = this.signedIn() && this.commit === seen && isLiveScheduleError(this.error());
+        return false;
+      }
+      if (this.writes === 1 && this.commit === seen) {
+        this.commit++;
+        this.state.set(next);
+      } else {
+        reload = true;
+      }
+      return true;
+    } finally {
+      this.writes--;
+      if (reload && this.writes === 0) {
+        await this.refresh({ keepError: true });
+      }
     }
-    if (version === this.writeVersion) {
-      this.state.set(next);
-    }
-    return true;
   }
 
   async postQuiet(path: string, payload: Record<string, unknown>): Promise<boolean> {
-    const version = this.writeVersion;
+    const seen = this.commit;
     const next = await this.send<AppState>('POST', path, payload, { quiet: true });
     if (!next) {
       return false;
     }
-    if (version === this.writeVersion) {
+    if (seen === this.commit && this.writes === 0) {
+      this.commit++;
       this.state.set(next);
     }
     return true;
@@ -289,10 +321,15 @@ export class Api {
         this.logout();
         return null;
       }
-      const body = await response.json().catch(() => ({}));
+      const body = (await response.json().catch(() => ({}))) as { error?: string; state?: unknown };
       if (!response.ok) {
+        const message = body.error || 'Something went wrong.';
+        if (!quiet && isAppState(body.state) && isLiveScheduleError(message)) {
+          this.commit++;
+          this.state.set(body.state);
+        }
         if (!quiet) {
-          this.error.set(body.error || 'Something went wrong.');
+          this.error.set(message);
         }
         return null;
       }
@@ -311,6 +348,23 @@ export class Api {
       }
     }
   }
+}
+
+function isLiveScheduleError(message: string): boolean {
+  const text = message.toLowerCase();
+  return (
+    text.includes('already in progress') ||
+    text.includes('already running') ||
+    text.includes('updated from another screen')
+  );
+}
+
+function isAppState(value: unknown): value is AppState {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const state = value as AppState;
+  return Boolean(state.settings && state.schedule && state.derived);
 }
 
 async function payloadHash(body: string): Promise<string> {

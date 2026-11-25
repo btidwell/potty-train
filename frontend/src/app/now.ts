@@ -64,18 +64,7 @@ export class NowPage {
       this.maybeChime();
       this.maybeNotify();
     }, 250);
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') {
-        void this.api.refresh();
-      }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('pageshow', onVisible);
-    destroyRef.onDestroy(() => {
-      window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('pageshow', onVisible);
-    });
+    destroyRef.onDestroy(() => window.clearInterval(timer));
     void this.start();
   }
 
@@ -141,7 +130,10 @@ export class NowPage {
 
   protected async startTimer(): Promise<void> {
     this.prepareAudio();
-    await this.api.mutate('POST', '/api/schedule/start-timer');
+    const ok = await this.api.mutate('POST', '/api/schedule/start-timer');
+    if (!ok) {
+      this.showServerTimer('timer');
+    }
   }
 
   protected async stopTimer(): Promise<void> {
@@ -155,6 +147,8 @@ export class NowPage {
     const ok = await this.api.mutate('POST', '/api/schedule/start-sit', { kind });
     if (ok) {
       this.clearOutcome();
+    } else {
+      this.showServerTimer('sit');
     }
   }
 
@@ -187,6 +181,25 @@ export class NowPage {
 
   protected reward(): string {
     return this.state()?.settings.reinforcer_note || 'the special item he only gets for using the potty';
+  }
+
+  private showServerTimer(expect: 'timer' | 'sit'): void {
+    const schedule = this.state()?.schedule;
+    const message = this.api.error().toLowerCase();
+    if (!schedule || !message) {
+      return;
+    }
+    const explained =
+      message.includes('already running') ||
+      message.includes('already in progress') ||
+      message.includes('updated from another screen');
+    if (!explained) {
+      return;
+    }
+    const visible = expect === 'sit' ? !!schedule.active_sit : schedule.running || !!schedule.active_sit;
+    if (visible) {
+      this.api.error.set('');
+    }
   }
 
   private clearOutcome(): void {
