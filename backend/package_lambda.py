@@ -22,6 +22,10 @@ PACKAGE = ROOT / "backend" / "potty_train"
 
 # Wheels for the Lambda runtime. http-ece publishes source only; it is pure
 # Python, so it is installed afterwards without a platform tag.
+# Pip still evaluates environment markers with the host interpreter. This
+# machine is newer than Lambda's Python 3.12, so packages that require
+# typing_extensions only on 3.12 (aiohttp, aiosignal) would otherwise be
+# installed without it.
 _LINUX = [
     "--platform",
     "manylinux2014_x86_64",
@@ -50,6 +54,7 @@ def main() -> None:
         "cryptography>=47",
         "requests>=2.21",
         "py-vapid>=1.7",
+        "typing_extensions>=4.4",
     )
     _pip("--no-deps", "http-ece>=1.1.0")
     shutil.copytree(
