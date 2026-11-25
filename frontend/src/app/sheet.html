@@ -22,7 +22,7 @@
 }
 
 @if (editing(); as draft) {
-  <form class="card outcome" (ngSubmit)="save()">
+  <form id="row-editor" class="card outcome" (ngSubmit)="save()">
     <h3>{{ editingId() ? 'Edit row' : 'New row' }}</h3>
     <div class="split">
       <label>Date <input type="date" name="date" [(ngModel)]="draft.date" required /></label>
