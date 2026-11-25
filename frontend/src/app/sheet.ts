@@ -15,6 +15,7 @@ export class SheetPage {
   protected readonly confirmId = signal<string | null>(null);
 
   protected readonly entries = computed(() => this.api.state()?.entries ?? []);
+  protected readonly recent = computed(() => [...this.entries()].reverse());
   protected readonly days = computed(() => {
     const groups = new Map<string, { date: string; sits: number; voids: number; accidents: number; lastInterval: number; lastNote: string }>();
     for (const entry of this.entries()) {
