@@ -64,7 +64,18 @@ export class NowPage {
       this.maybeChime();
       this.maybeNotify();
     }, 250);
-    destroyRef.onDestroy(() => window.clearInterval(timer));
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void this.api.refresh();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onVisible);
+    destroyRef.onDestroy(() => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onVisible);
+    });
     void this.start();
   }
 
@@ -194,9 +205,7 @@ export class NowPage {
   }
 
   private async start(): Promise<void> {
-    if (!this.api.state()) {
-      await this.api.refresh();
-    }
+    await this.api.refresh();
     if (this.notifyPermission() === 'granted') {
       await this.subscribeToPush();
     }
@@ -264,30 +273,44 @@ export class NowPage {
       return;
     }
     if (state.schedule.active_sit) {
-      if (this.sitLeft() <= 0 && !this.notifiedSit) {
+      const started = state.schedule.active_sit.started_at;
+      if (this.serverOwnsAlert(started, state.push?.sit_sent_for, state.push?.sit_scheduled_for)) {
+        this.notifiedSit = true;
+      } else if (this.sitLeft() <= 0 && !this.notifiedSit) {
         this.notifiedSit = true;
         const name = state.settings.child_name.trim();
         const length = `${state.settings.sit_minutes} min sit`;
         void this.showNotification(
           'Sit time is up',
           name ? `${name}. ${length}.` : `${length}.`,
-          `sit:${state.schedule.active_sit.started_at}`,
+          `sit:${started}`,
         );
       }
       return;
     }
     this.notifiedSit = false;
     const next = state.schedule.next_sit_at;
-    if (state.schedule.running && next && this.offLeft() <= 0 && !this.notifiedOff) {
+    const offOwned = this.serverOwnsAlert(next, state.push?.off_sent_for, state.push?.off_scheduled_for);
+    if (offOwned) {
+      this.notifiedOff = true;
+    } else if (state.schedule.running && next && this.offLeft() <= 0 && !this.notifiedOff) {
       this.notifiedOff = true;
       const name = state.settings.child_name.trim();
       const minutes = state.schedule.timer_interval_minutes;
       const length = typeof minutes === 'number' ? `${minutes} min off potty` : 'Off-potty interval';
       void this.showNotification('Time to go potty', name ? `${name}. ${length}.` : `${length}.`, `off:${next}`);
     }
-    if (this.offLeft() > 0) {
+    if (this.offLeft() > 0 && !offOwned) {
       this.notifiedOff = false;
     }
+  }
+
+  private serverOwnsAlert(
+    token: string | null | undefined,
+    sent: string | null | undefined,
+    scheduled: string | null | undefined,
+  ): boolean {
+    return !!token && (sent === token || scheduled === token);
   }
 
   private async showNotification(title: string, body: string, tag: string): Promise<void> {

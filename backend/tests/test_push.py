@@ -175,7 +175,17 @@ def test_public_state_omits_subscriptions():
     assert "push_subscriptions" not in view
     assert "reminders" not in view
     assert "https://push.example/secret" not in json.dumps(view)
-    assert set(view["push"]) == {"public_key"}
+    assert set(view["push"]) == {
+        "public_key",
+        "off_sent_for",
+        "sit_sent_for",
+        "off_scheduled_for",
+        "sit_scheduled_for",
+    }
+    assert view["push"]["off_sent_for"] == "2026-11-25T02:30:00+00:00"
+    assert view["push"]["off_scheduled_for"] == "x"
+    assert view["push"]["sit_sent_for"] is None
+    assert view["push"]["sit_scheduled_for"] is None
 
 
 def test_future_off_timer_schedules_without_sending(app):
