@@ -68,42 +68,47 @@
 
     <h2>Activity</h2>
     <p class="lede">Newest rows first. Rows saved before this view existed have no name on them.</p>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Time</th>
-            <th>What</th>
-            <th>Result</th>
-            <th>Who</th>
-            <th>Comments</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (entry of activity(); track entry.id) {
-            <tr>
-              <td>{{ entry.date }}</td>
-              <td>{{ entry.time }}</td>
-              <td>{{ kindLabel(entry.kind) }}</td>
-              <td>{{ outcome(entry) }}</td>
-              <td>{{ entry.recorded_by || '—' }}</td>
-              <td>
-                @if (entry.decision_note) {
-                  <strong class="note" [class.up]="entry.decision === 'increase'" [class.down]="entry.decision === 'decrease'">{{ entry.decision_note }}</strong>
-                }
-                @if (entry.comment) {
-                  <span class="comment">{{ entry.comment }}</span>
-                }
-              </td>
-            </tr>
-          } @empty {
-            <tr>
-              <td colspan="6">No rows yet.</td>
-            </tr>
-          }
-        </tbody>
-      </table>
+    <div class="log-list">
+      @for (entry of activity(); track entry.id) {
+        <details class="log-row">
+          <summary>
+            <span class="log-when"><strong>{{ entry.date }}</strong> {{ entry.time }}</span>
+            <span class="log-glance">{{ kindLabel(entry.kind) }} · {{ outcome(entry) }}</span>
+          </summary>
+          <div class="log-detail">
+            <dl>
+              <div>
+                <dt>What</dt>
+                <dd>{{ kindLabel(entry.kind) }}</dd>
+              </div>
+              <div>
+                <dt>Result</dt>
+                <dd>{{ outcome(entry) }}</dd>
+              </div>
+              <div>
+                <dt>Who</dt>
+                <dd>{{ entry.recorded_by || 'No name on this row' }}</dd>
+              </div>
+              <div>
+                <dt>Comments</dt>
+                <dd>
+                  @if (entry.decision_note) {
+                    <strong class="note" [class.up]="entry.decision === 'increase'" [class.down]="entry.decision === 'decrease'">{{ entry.decision_note }}</strong>
+                  }
+                  @if (entry.comment) {
+                    <span class="comment">{{ entry.comment }}</span>
+                  }
+                  @if (!entry.decision_note && !entry.comment) {
+                    <span class="hint">No comment</span>
+                  }
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </details>
+      } @empty {
+        <p class="lede">No rows yet.</p>
+      }
     </div>
     <p class="hint"><a routerLink="/settings">Invite someone from Settings</a></p>
   }
