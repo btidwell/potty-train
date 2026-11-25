@@ -9,10 +9,8 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from py_vapid import Vapid
 from pywebpush import WebPushException
 
-import potty_train.auth as auth
 import potty_train.handler as handler_mod
 import potty_train.push as push
-from potty_train.auth import issue_token
 from potty_train.handler import handler
 from potty_train.push import PushFailed, application_server_key
 from potty_train.reminders import sync_reminders
@@ -65,7 +63,7 @@ class App:
         self.scheduler = scheduler
         self.pushes = pushes
         self.clock = {"now": START}
-        self.token = issue_token("test-key")
+        self.token = "test-token"
 
     def now(self) -> datetime:
         return self.clock["now"]
@@ -140,7 +138,8 @@ def app(monkeypatch, tmp_path):
     push._CACHE["loaded_at"] = 0.0
     push._CACHE["material"] = None
     handler_mod._STORE = FileStore(str(path))
-    monkeypatch.setattr(handler_mod, "load_secret", lambda: {"password": "pw", "token_key": "test-key"})
+    monkeypatch.setattr(handler_mod, "token_is_valid", lambda token: token == "test-token")
+    monkeypatch.setattr(handler_mod, "session_allows", lambda event: True)
     monkeypatch.setattr(handler_mod, "_server_now", lambda: clock["now"])
     monkeypatch.setattr("potty_train.reminders._client", lambda: scheduler)
 
@@ -443,20 +442,18 @@ def test_local_env_does_not_call_aws(monkeypatch, tmp_path):
 
     monkeypatch.setenv("POTTY_ENV", "local")
     monkeypatch.setenv("POTTY_STATE_PATH", str(tmp_path / "state.json"))
-    monkeypatch.setenv("POTTY_LOCAL_PASSWORD", "secret")
-    monkeypatch.setenv("POTTY_LOCAL_TOKEN_KEY", "local-key")
     monkeypatch.setenv("SCHEDULER_ROLE_ARN", "arn:aws:iam::143977713810:role/potty-log-scheduler")
     monkeypatch.delenv("VAPID_SECRET_ARN", raising=False)
     monkeypatch.delenv("POTTY_VAPID_PRIVATE_PEM", raising=False)
     monkeypatch.delenv("POTTY_VAPID_PUBLIC_PEM", raising=False)
     push._CACHE["loaded_at"] = 0.0
     push._CACHE["material"] = None
-    auth._CACHE["secret"] = None
-    auth._CACHE["loaded_at"] = 0.0
     handler_mod._STORE = None
     monkeypatch.setattr("potty_train.reminders._client", client)
     monkeypatch.setattr(handler_mod, "_server_now", lambda: START)
-    token = issue_token("local-key")
+    monkeypatch.setattr(handler_mod, "token_is_valid", lambda token: token == "local-token")
+    monkeypatch.setattr(handler_mod, "session_allows", lambda event: True)
+    token = "local-token"
     result = handler(
         {
             "httpMethod": "POST",

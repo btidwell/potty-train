@@ -125,6 +125,14 @@ main.with-nav { padding-bottom: 7rem; }
   font-weight: 700;
 }
 
+.dock.with-people {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.dock.with-people a {
+  font-size: 0.92rem;
+}
+
 .login, .card, .hero, .guide {
   background: var(--card);
   border: 1px solid var(--line);
@@ -134,6 +142,35 @@ main.with-nav { padding-bottom: 7rem; }
 }
 
 .login { margin-top: 8vh; }
+
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.75rem 0 0;
+}
+
+.auth-links button {
+  min-width: 10rem;
+}
+
+.qr {
+  width: 180px;
+  height: 180px;
+  background: white;
+  padding: 0.4rem;
+  border-radius: 0.6rem;
+}
+
+.secret-key {
+  margin: 0;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  letter-spacing: 0.06em;
+  word-break: break-all;
+  background: white;
+  border-radius: 0.6rem;
+  padding: 0.7rem 0.8rem;
+}
 
 .lede, .hint, .rule, .streaks { color: var(--muted); }
 
@@ -231,6 +268,104 @@ fieldset {
 
 .sheet-head, .guide h2 { display: flex; justify-content: space-between; gap: 1rem; align-items: end; }
 .sheet-head h2, .guide h2, .settings h2 { margin-top: 0; }
+
+.people-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.7rem;
+  margin: 0.8rem 0 1.4rem;
+}
+
+.person {
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 1.1rem;
+  padding: 0.9rem 1rem;
+}
+
+.person .row { width: 100%; }
+
+.person button {
+  max-width: 100%;
+  white-space: normal;
+}
+
+.person h3 { margin: 0 0 0.35rem; font-size: 1.05rem; }
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 0 0.35rem;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.78rem;
+  background: var(--moss);
+  color: var(--green-deep);
+  max-width: 100%;
+  white-space: normal;
+}
+
+.badge.wait {
+  background: #f3e2c2;
+  color: #6b3418;
+}
+
+.person .hint, .sheet-head + .hint { margin: 0.15rem 0; }
+
+.account-sessions { margin-top: 0.7rem; }
+
+.account-sessions summary {
+  cursor: pointer;
+  color: var(--green-deep);
+  font-weight: 650;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  list-style: none;
+}
+
+.account-sessions summary::-webkit-details-marker { display: none; }
+
+.account-sessions summary::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  flex: none;
+}
+
+.account-sessions[open] summary::before { transform: rotate(45deg); }
+
+.account-sessions .session {
+  padding: 0.55rem 0 0.15rem;
+  border-top: 1px solid var(--line);
+}
+
+.account-sessions .session p { margin: 0.15rem 0; }
+
+.person .hint { overflow-wrap: anywhere; }
+
+.hint a {
+  color: var(--green-deep);
+  font-weight: 650;
+}
+
+td span.comment {
+  display: block;
+  margin: 0.15rem 0 0;
+  color: inherit;
+  font-weight: 400;
+  border: 0;
+  padding: 0;
+}
 
 .day-strip { margin: 0.8rem 0 1rem; }
 .day-strip article { min-width: 11rem; }

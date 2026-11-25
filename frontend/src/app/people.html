@@ -1,0 +1,110 @@
+<section class="sheet-head">
+  <div>
+    <h2>People</h2>
+    <p class="lede">Everyone with an account, and the rows saved on the log.</p>
+  </div>
+</section>
+
+@switch (phase()) {
+  @case ('loading') {
+    <p class="lede">Loading accounts…</p>
+  }
+  @case ('denied') {
+    <p class="banner error" role="alert">Only the account owner can see accounts.</p>
+  }
+  @case ('error') {
+    <p class="lede">Accounts could not be loaded.</p>
+  }
+  @case ('ready') {
+    <div class="people-list">
+      @for (person of users(); track person.email) {
+        <article class="person">
+          <h3>{{ person.email }}</h3>
+          <p class="badges">
+            <span class="badge" [class.wait]="person.status !== 'active'">{{ person.status_label }}</span>
+            @if (person.owner) {
+              <span class="badge">Owner</span>
+            }
+            <span class="badge" [class.wait]="!person.authenticator">
+              {{ person.authenticator ? 'Authenticator on' : 'Authenticator not set up' }}
+            </span>
+          </p>
+          <p class="hint">
+            Joined {{ when(person.created_at) }}
+            @if (when(person.updated_at)) {
+              · Last change {{ when(person.updated_at) }}
+            }
+          </p>
+          <p class="hint">
+            @if (rowsFor(person.email); as count) {
+              {{ count }} {{ count === 1 ? 'row' : 'rows' }} saved
+            } @else {
+              No rows named to this account yet
+            }
+          </p>
+          <details class="account-sessions">
+            <summary>
+              @if (person.sessions.length) {
+                {{ person.sessions.length }} signed-in {{ person.sessions.length === 1 ? 'session' : 'sessions' }}
+              } @else {
+                No signed-in sessions
+              }
+            </summary>
+            @for (session of person.sessions; track session.id) {
+              <div class="session">
+                <p>{{ session.label }}</p>
+                <p class="hint">Signed in {{ when(session.created_at) }} · Last active {{ when(session.last_seen) }}</p>
+                <p class="hint">{{ session.ip ? address(session.ip) : 'No IP address recorded' }}</p>
+              </div>
+            } @empty {
+              <p class="hint">This account has no browsers signed in.</p>
+            }
+          </details>
+        </article>
+      } @empty {
+        <p class="lede">No accounts yet.</p>
+      }
+    </div>
+
+    <h2>Activity</h2>
+    <p class="lede">Newest rows first. Rows saved before this view existed have no name on them.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Time</th>
+            <th>What</th>
+            <th>Result</th>
+            <th>Who</th>
+            <th>Comments</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (entry of activity(); track entry.id) {
+            <tr>
+              <td>{{ entry.date }}</td>
+              <td>{{ entry.time }}</td>
+              <td>{{ kindLabel(entry.kind) }}</td>
+              <td>{{ outcome(entry) }}</td>
+              <td>{{ entry.recorded_by || '—' }}</td>
+              <td>
+                @if (entry.decision_note) {
+                  <strong class="note" [class.up]="entry.decision === 'increase'" [class.down]="entry.decision === 'decrease'">{{ entry.decision_note }}</strong>
+                }
+                @if (entry.comment) {
+                  <span class="comment">{{ entry.comment }}</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6">No rows yet.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="hint"><a routerLink="/settings">Invite someone from Settings</a></p>
+  }
+}

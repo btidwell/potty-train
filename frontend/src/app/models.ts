@@ -36,6 +36,7 @@ export interface Entry {
   accident_wet: boolean;
   comment: string;
   created_at: string;
+  recorded_by?: string;
   interval_minutes: number;
   decision: 'increase' | 'decrease' | 'same';
   decision_note: string;
@@ -72,6 +73,27 @@ export interface AppState {
     off_scheduled_for: string | null;
     sit_scheduled_for: string | null;
   };
+}
+
+export interface BrowserSession {
+  id: string;
+  label: string;
+  created_at: string;
+  last_seen: string;
+  ip: string;
+  remembered: boolean;
+}
+
+export interface HouseholdUser {
+  email: string;
+  status: 'invited' | 'active' | 'reset' | 'disabled' | 'other';
+  status_label: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+  authenticator: boolean;
+  owner: boolean;
+  sessions: BrowserSession[];
 }
 
 export interface Outcome {

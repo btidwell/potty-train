@@ -183,8 +183,10 @@ resource "aws_lambda_function" "api" {
     variables = {
       DATA_BUCKET             = aws_s3_bucket.data.bucket
       STATE_KEY               = local.state_key
-      APP_PASSWORD_SECRET_ARN = aws_secretsmanager_secret.password.arn
-      APP_TOKEN_SECRET_ARN    = aws_secretsmanager_secret.token_key.arn
+      SESSIONS_KEY            = "state/sessions.json"
+      COGNITO_USER_POOL_ID    = aws_cognito_user_pool.users.id
+      COGNITO_CLIENT_ID       = aws_cognito_user_pool_client.web.id
+      COGNITO_REGION          = var.aws_region
       POTTY_ORIGIN_SECRET     = random_password.origin_header.result
       VAPID_SECRET_ARN        = aws_secretsmanager_secret.vapid.arn
       VAPID_SUBJECT           = var.vapid_subject
@@ -209,7 +211,7 @@ resource "aws_lambda_function" "api" {
 
 resource "aws_lambda_function_url" "api" {
   function_name      = aws_lambda_function.api.function_name
-  authorization_type = "NONE"
+  authorization_type = "AWS_IAM"
 }
 
 resource "terraform_data" "ui" {

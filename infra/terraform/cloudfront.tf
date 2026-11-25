@@ -1,3 +1,11 @@
+resource "aws_cloudfront_origin_access_control" "api" {
+  name                              = "potty-log-api"
+  description                       = "Sign requests from CloudFront to the API function URL."
+  origin_access_control_origin_type = "lambda"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
 resource "aws_cloudfront_origin_access_control" "ui" {
   name                              = "potty-log-ui"
   description                       = "Read the private UI bucket."
@@ -6,19 +14,9 @@ resource "aws_cloudfront_origin_access_control" "ui" {
   signing_protocol                  = "sigv4"
 }
 
-resource "aws_cloudfront_function" "allow_home" {
-  name    = "potty-log-allow-home"
-  runtime = "cloudfront-js-2.0"
-  comment = "Allow only the networks passed in allowedCidrs."
-  publish = true
-  code = templatefile("${path.module}/function.js.tftpl", {
-    cidrs_json = jsonencode(var.allowed_cidrs)
-  })
-}
-
 resource "aws_cloudfront_distribution" "site" {
   enabled             = true
-  comment             = "Potty training log: private S3 data, Lambda API, CloudFront site limited to an IP allowlist."
+  comment             = "Potty training log: private S3 data, Lambda API, viewers limited to the United States."
   price_class         = "PriceClass_100"
   http_version        = "http2"
   is_ipv6_enabled     = true
@@ -31,8 +29,9 @@ resource "aws_cloudfront_distribution" "site" {
   }
 
   origin {
-    origin_id   = "api"
-    domain_name = trimsuffix(trimprefix(aws_lambda_function_url.api.function_url, "https://"), "/")
+    origin_id                = "api"
+    domain_name              = trimsuffix(trimprefix(aws_lambda_function_url.api.function_url, "https://"), "/")
+    origin_access_control_id = aws_cloudfront_origin_access_control.api.id
 
     custom_header {
       name  = "X-Potty-Origin"
@@ -55,11 +54,6 @@ resource "aws_cloudfront_distribution" "site" {
     compress                   = true
     cache_policy_id            = "658327ea-f89d-4fab-a63d-7e88639e58f6"
     response_headers_policy_id = "67f7725c-6f97-4210-82d7-5512b31e9d03"
-
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.allow_home.arn
-    }
   }
 
   ordered_cache_behavior {
@@ -72,16 +66,12 @@ resource "aws_cloudfront_distribution" "site" {
     cache_policy_id            = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
     origin_request_policy_id   = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
     response_headers_policy_id = "67f7725c-6f97-4210-82d7-5512b31e9d03"
-
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.allow_home.arn
-    }
   }
 
   restrictions {
     geo_restriction {
-      restriction_type = "none"
+      restriction_type = "whitelist"
+      locations        = ["US"]
     }
   }
 
@@ -100,7 +90,9 @@ resource "aws_lambda_permission" "cloudfront_url" {
   function_name          = aws_lambda_function.api.function_name
   principal              = "cloudfront.amazonaws.com"
   source_arn             = aws_cloudfront_distribution.site.arn
-  function_url_auth_type = "NONE"
+  function_url_auth_type = "AWS_IAM"
+
+  depends_on = [aws_lambda_function_url.api]
 }
 
 resource "aws_lambda_permission" "cloudfront_invoke" {
@@ -109,22 +101,6 @@ resource "aws_lambda_permission" "cloudfront_invoke" {
   function_name            = aws_lambda_function.api.function_name
   principal                = "cloudfront.amazonaws.com"
   source_arn               = aws_cloudfront_distribution.site.arn
-  invoked_via_function_url = true
-}
-
-resource "aws_lambda_permission" "function_url" {
-  statement_id           = "AllowFunctionUrl"
-  action                 = "lambda:InvokeFunctionUrl"
-  function_name          = aws_lambda_function.api.function_name
-  principal              = "*"
-  function_url_auth_type = "NONE"
-}
-
-resource "aws_lambda_permission" "function_invoke" {
-  statement_id             = "AllowFunctionInvoke"
-  action                   = "lambda:InvokeFunction"
-  function_name            = aws_lambda_function.api.function_name
-  principal                = "*"
   invoked_via_function_url = true
 }
 

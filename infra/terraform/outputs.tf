@@ -3,14 +3,14 @@ output "site_url" {
   value       = "https://${aws_cloudfront_distribution.site.domain_name}"
 }
 
-output "password_secret_name" {
-  description = "Secrets Manager name of the site password. The value is not an output."
-  value       = aws_secretsmanager_secret.password.name
+output "user_pool_id" {
+  description = "Cognito user pool. Sign-in is the email address."
+  value       = aws_cognito_user_pool.users.id
 }
 
-output "token_key_secret_name" {
-  description = "Secrets Manager name of the session token key. The value is not an output."
-  value       = aws_secretsmanager_secret.token_key.name
+output "user_pool_client_id" {
+  description = "Public app client for the browser. It has no client secret."
+  value       = aws_cognito_user_pool_client.web.id
 }
 
 output "data_bucket_name" {
@@ -23,7 +23,7 @@ output "distribution_id" {
   value       = aws_cloudfront_distribution.site.id
 }
 
-output "allowed_cidrs" {
-  description = "Viewer allowlist baked into the CloudFront function."
-  value       = var.allowed_cidrs
+output "viewer_countries" {
+  description = "CloudFront geographic allow list."
+  value       = aws_cloudfront_distribution.site.restrictions[0].geo_restriction[0].locations
 }
