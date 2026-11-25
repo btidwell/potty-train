@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Api } from './api';
@@ -31,6 +31,8 @@ export class SettingsPage {
   ];
 
   constructor() {
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(this.api.registerViewReload(() => this.reloadFromServer()));
     effect(() => {
       const settings = this.api.state()?.settings;
       if (settings && !this.draft()) {
@@ -77,6 +79,20 @@ export class SettingsPage {
 
   private async loadSessions(): Promise<void> {
     this.sessions.set((await this.api.listSessions()) ?? []);
+  }
+
+  private async reloadFromServer(): Promise<void> {
+    await this.loadSessions();
+    const settings = this.api.state()?.settings;
+    if (settings) {
+      const copy = structuredClone(settings);
+      if (!copy.timezone) {
+        copy.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      }
+      this.draft.set(copy);
+      this.saved.set(false);
+    }
+    this.confirmingSession.set(null);
   }
 
   protected zoneOptions(): string[] {

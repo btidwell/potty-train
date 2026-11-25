@@ -4,9 +4,14 @@
       <p class="brand">Potty Log</p>
       <h1>{{ child() }}</h1>
     </div>
-    @if (interval() !== null) {
-      <p class="interval-chip">{{ interval() }} min off potty</p>
-    }
+    <div class="top-actions">
+      @if (interval() !== null) {
+        <p class="interval-chip">{{ interval() }} min off potty</p>
+      }
+      <button type="button" class="quiet refresh" (click)="refresh()" [disabled]="api.busy() || refreshing()">
+        {{ refreshing() ? 'Refreshing…' : 'Refresh' }}
+      </button>
+    </div>
   </header>
 }
 

@@ -41,6 +41,15 @@ logger = logging.getLogger(__name__)
 
 _STORE = None
 
+# These rejects mean the schedule is already in the state the phone asked for,
+# or another save landed first. The response includes the current log so the
+# open page can show that timer instead of staying on the start button.
+_SCHEDULE_CONFLICTS = {
+    "The off-potty timer is already running.",
+    "A sit is already in progress.",
+    "Finish or cancel the sit that is already in progress.",
+}
+
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     if _is_reminder_event(event):
@@ -106,9 +115,12 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     except json.JSONDecodeError:
         return _response(400, {"error": "Request body must be JSON."})
     except ValueError as exc:
-        return _response(400, {"error": str(exc)})
+        message = str(exc)
+        if message in _SCHEDULE_CONFLICTS:
+            return _schedule_conflict(message)
+        return _response(400, {"error": message})
     except Conflict:
-        return _response(409, {"error": "The log was updated from another screen. Reload and try again."})
+        return _schedule_conflict("The log was updated from another screen. Reload and try again.")
     except RuntimeError:
         return _response(500, {"error": "The app is not configured."})
 
@@ -199,6 +211,11 @@ def _invite(event: dict[str, Any]) -> dict[str, Any]:
         return _response(500, {"error": "Could not send the invitation."})
     message = "Invitation sent again." if result == "resent" else "Invitation sent."
     return _response(200, {"ok": True, "message": message})
+
+
+def _schedule_conflict(message: str) -> dict[str, Any]:
+    state, _etag = _load()
+    return _response(409, {"error": message, "state": public_state(state, _server_now())})
 
 
 def _mutate(event: dict[str, Any], action: Any) -> dict[str, Any]:

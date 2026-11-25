@@ -187,6 +187,41 @@ def test_public_state_omits_subscriptions():
     assert view["push"]["sit_scheduled_for"] is None
 
 
+def test_second_start_returns_the_running_timer(app):
+    status, body = app.invoke("POST", "/api/schedule/start-timer")
+    assert status == 200, body
+    due = body["schedule"]["next_sit_at"]
+    app.clock["now"] = START + timedelta(minutes=4)
+    status, again = app.invoke("POST", "/api/schedule/start-timer")
+    assert status == 409, again
+    assert "already running" in again["error"]
+    assert again["state"]["schedule"]["running"] is True
+    assert again["state"]["schedule"]["next_sit_at"] == due
+    assert again["state"]["schedule"]["active_sit"] is None
+    assert app.stored()["schedule"]["next_sit_at"] == due
+
+
+def test_second_sit_returns_the_sit_already_in_progress(app):
+    status, body = app.invoke("POST", "/api/schedule/start-sit", {"kind": "scheduled"})
+    assert status == 200, body
+    started = body["schedule"]["active_sit"]["started_at"]
+    status, again = app.invoke("POST", "/api/schedule/start-sit", {"kind": "asked"})
+    assert status == 409, again
+    assert "already in progress" in again["error"]
+    assert again["state"]["schedule"]["active_sit"]["kind"] == "scheduled"
+    assert again["state"]["schedule"]["active_sit"]["started_at"] == started
+
+
+def test_start_timer_during_a_sit_returns_that_sit(app):
+    status, body = app.invoke("POST", "/api/schedule/start-sit", {"kind": "accident"})
+    assert status == 200, body
+    status, again = app.invoke("POST", "/api/schedule/start-timer")
+    assert status == 409, again
+    assert "already in progress" in again["error"]
+    assert again["state"]["schedule"]["active_sit"]["kind"] == "accident"
+    assert app.stored()["schedule"]["active_sit"]["kind"] == "accident"
+
+
 def test_future_off_timer_schedules_without_sending(app):
     app.subscribe()
     status, body = app.invoke("POST", "/api/schedule/start-timer")

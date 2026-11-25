@@ -179,6 +179,8 @@ def schedule_action(state: dict[str, Any], action: str, now: datetime) -> None:
     if action == "start_timer":
         if schedule["active_sit"]:
             raise ValueError("Finish or cancel the sit that is already in progress.")
+        if schedule["running"]:
+            raise ValueError("The off-potty timer is already running.")
         schedule["running"] = True
         schedule["timer_interval_minutes"] = interval
         schedule["next_sit_at"] = (now + timedelta(minutes=interval)).isoformat()
