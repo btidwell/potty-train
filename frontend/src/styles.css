@@ -217,13 +217,13 @@ input, select {
   border-color: #e2c48a;
 }
 
-.stats, .actions, .row, .split, .day-strip {
+.stats, .actions, .row, .split {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
 }
 
-.stats p, .day-strip article {
+.stats p {
   margin: 0;
   background: white;
   border: 1px solid var(--line);
@@ -370,11 +370,6 @@ fieldset {
   color: var(--green-deep);
   font-weight: 650;
 }
-
-.day-strip { margin: 0.8rem 0 1rem; min-width: 0; }
-.day-strip article { min-width: min(11rem, 100%); }
-.day-strip h3 { margin: 0 0 0.2rem; font-size: 1rem; }
-.day-strip p { margin: 0; color: var(--muted); font-size: 0.9rem; }
 
 .log-list {
   display: grid;

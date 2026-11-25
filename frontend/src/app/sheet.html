@@ -9,18 +9,6 @@
   </div>
 </section>
 
-@if (days().length) {
-  <div class="day-strip">
-    @for (day of days(); track day.date) {
-      <article>
-        <h3>{{ day.date }}</h3>
-        <p>{{ day.sits }} {{ day.sits === 1 ? 'row' : 'rows' }} · {{ day.voids }} {{ day.voids === 1 ? 'void' : 'voids' }} · {{ day.accidents }} {{ day.accidents === 1 ? 'accident' : 'accidents' }}</p>
-        <p>Last row {{ day.lastInterval }} min @if (day.lastNote) { · {{ day.lastNote }} }</p>
-      </article>
-    }
-  </div>
-}
-
 @if (editing(); as draft) {
   <form id="row-editor" class="card outcome" (ngSubmit)="save()">
     <h3>{{ editingId() ? 'Edit row' : 'New row' }}</h3>

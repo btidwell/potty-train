@@ -14,32 +14,7 @@ export class SheetPage {
   protected readonly editingId = signal<string | null>(null);
   protected readonly confirmId = signal<string | null>(null);
 
-  protected readonly entries = computed(() => this.api.state()?.entries ?? []);
-  protected readonly recent = computed(() => [...this.entries()].reverse());
-  protected readonly days = computed(() => {
-    const groups = new Map<string, { date: string; sits: number; voids: number; accidents: number; lastInterval: number; lastNote: string }>();
-    for (const entry of this.entries()) {
-      const current = groups.get(entry.date) ?? {
-        date: entry.date,
-        sits: 0,
-        voids: 0,
-        accidents: 0,
-        lastInterval: entry.interval_minutes,
-        lastNote: '',
-      };
-      current.sits += 1;
-      if (entry.toilet_bm || entry.toilet_urine) {
-        current.voids += 1;
-      }
-      if (entry.accident_wet || entry.accident_soiled) {
-        current.accidents += 1;
-      }
-      current.lastInterval = entry.interval_minutes;
-      current.lastNote = entry.decision_note;
-      groups.set(entry.date, current);
-    }
-    return [...groups.values()];
-  });
+  protected readonly recent = computed(() => [...(this.api.state()?.entries ?? [])].reverse());
 
   constructor() {
     if (!this.api.state()) {
