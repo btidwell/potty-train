@@ -106,6 +106,24 @@ export class SheetPage {
     }
   }
 
+  protected glance(entry: Entry): string {
+    const marks: string[] = [];
+    if (entry.toilet_urine) {
+      marks.push('urine');
+    }
+    if (entry.toilet_bm) {
+      marks.push('BM');
+    }
+    if (entry.accident_wet) {
+      marks.push('wet');
+    }
+    if (entry.accident_soiled) {
+      marks.push('soiled');
+    }
+    const result = marks.length ? marks.join(', ') : 'dry';
+    return `${entry.interval_minutes} min · ${result}`;
+  }
+
   protected kindLabel(kind: Entry['kind']): string {
     switch (kind) {
       case 'scheduled':
