@@ -55,7 +55,7 @@
 }
 
 <div class="log-list">
-  @for (entry of entries(); track entry.id) {
+  @for (entry of recent(); track entry.id) {
     <details class="log-row">
       <summary>
         <span class="log-when"><strong>{{ entry.date }}</strong> {{ entry.time }}</span>
