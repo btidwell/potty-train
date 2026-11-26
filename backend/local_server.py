@@ -7,6 +7,7 @@ backend/.local-cognito.json.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -72,7 +73,14 @@ def main() -> None:
                 "body": raw,
             }
             result = handler(event, None)
-            body = (result.get("body") or "").encode("utf-8")
+            body = result.get("body") or ""
+            # The PDF route is base64, the same way a Lambda function URL
+            # returns a binary body. Everything else is JSON or CSV text.
+            if result.get("isBase64Encoded"):
+                raw = base64.b64decode(body)
+            else:
+                raw = body.encode("utf-8")
+            body = raw
             self.send_response(int(result["statusCode"]))
             for key, value in (result.get("headers") or {}).items():
                 self.send_header(key, value)
