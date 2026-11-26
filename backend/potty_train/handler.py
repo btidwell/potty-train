@@ -10,6 +10,7 @@ HTTP request and does not pass through CloudFront.
 
 from __future__ import annotations
 
+import base64
 import csv
 import hmac
 import io
@@ -25,6 +26,7 @@ from potty_train.invites import send_invite
 from potty_train.push import PushFailed, upsert_subscription
 from potty_train.reminders import apply_reminder, sync_reminders
 from potty_train.sessions import display_ip, list_sessions, open_session, owns, revoke, touch
+from potty_train.sheet_pdf import render_log_pdf
 from potty_train.service import (
     create_entry,
     delete_entry,
@@ -84,6 +86,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             return _response(200, public_state(state, _server_now()))
         if method == "GET" and path == "/api/export.csv":
             return _export()
+        if method == "GET" and path == "/api/export.pdf":
+            return _export_pdf()
         if method == "GET" and path == "/api/users":
             return _users(event)
         if method == "PUT" and path == "/api/settings":
@@ -313,6 +317,21 @@ def _export() -> dict[str, Any]:
             "Content-Disposition": "attachment; filename=potty-log.csv",
         },
         "body": buffer.getvalue(),
+    }
+
+
+def _export_pdf() -> dict[str, Any]:
+    state, _etag = _load()
+    payload = render_log_pdf(state["entries"], state["settings"])
+    return {
+        "statusCode": 200,
+        "isBase64Encoded": True,
+        "headers": {
+            **_headers(),
+            "Content-Type": "application/pdf",
+            "Content-Disposition": "attachment; filename=potty-log.pdf",
+        },
+        "body": base64.b64encode(payload).decode("ascii"),
     }
 
 

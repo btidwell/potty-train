@@ -5,7 +5,13 @@
   </div>
   <div class="row">
     <button type="button" class="primary" (click)="startNew()">Add a row</button>
-    <button type="button" (click)="api.downloadCsv()">Download CSV</button>
+    <details #downloads class="download-menu">
+      <summary>Download</summary>
+      <div class="download-options">
+        <button type="button" (click)="chooseDownload(downloads, 'pdf')">PDF</button>
+        <button type="button" (click)="chooseDownload(downloads, 'csv')">CSV</button>
+      </div>
+    </details>
   </div>
 </section>
 

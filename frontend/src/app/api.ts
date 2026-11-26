@@ -243,8 +243,16 @@ export class Api {
     return true;
   }
 
-  async downloadCsv(): Promise<void> {
-    const response = await fetch('/api/export.csv', { headers: await this.headers() });
+  downloadCsv(): Promise<void> {
+    return this.downloadFile('/api/export.csv', 'potty-log.csv');
+  }
+
+  downloadPdf(): Promise<void> {
+    return this.downloadFile('/api/export.pdf', 'potty-log.pdf');
+  }
+
+  private async downloadFile(path: string, filename: string): Promise<void> {
+    const response = await fetch(path, { headers: await this.headers() });
     if (response.status === 401) {
       this.logout();
       return;
@@ -257,7 +265,7 @@ export class Api {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'potty-log.csv';
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
   }
