@@ -22,6 +22,15 @@ export class SheetPage {
     }
   }
 
+  protected chooseDownload(menu: HTMLDetailsElement, kind: 'pdf' | 'csv'): void {
+    menu.open = false;
+    if (kind === 'pdf') {
+      void this.api.downloadPdf();
+      return;
+    }
+    void this.api.downloadCsv();
+  }
+
   protected startNew(): void {
     const now = new Date();
     const pad = (value: number) => String(value).padStart(2, '0');

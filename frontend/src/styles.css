@@ -282,6 +282,38 @@ fieldset {
 .sheet-head, .guide h2 { display: flex; justify-content: space-between; gap: 1rem; align-items: end; }
 .sheet-head { flex-wrap: wrap; }
 app-sheet .sheet-head { margin-bottom: 1.25rem; }
+
+.download-menu { position: relative; }
+.download-menu summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 10rem;
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  min-height: 48px;
+  cursor: pointer;
+}
+.download-menu summary::-webkit-details-marker { display: none; }
+.download-menu summary::marker { content: none; }
+.download-options {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.4rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  box-shadow: var(--shadow);
+}
+.download-options button { width: 100%; min-width: 0; }
 .sheet-head h2, .guide h2, .settings h2 { margin-top: 0; }
 
 .people-list {
