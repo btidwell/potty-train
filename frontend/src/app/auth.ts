@@ -27,6 +27,7 @@ export type AuthView =
   | { kind: 'totp-code' };
 
 let ready: Promise<void> | null = null;
+let authenticatorRecord: Promise<void> | null = null;
 
 export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
@@ -204,12 +205,21 @@ export async function confirmAuthenticator(code: string): Promise<AuthView> {
   return interpret(await confirmSignIn({ challengeResponse: code }));
 }
 
-export async function recordAuthenticator(): Promise<void> {
+export function recordAuthenticator(): Promise<void> {
+  // Restore runs from startup and from the route guard together. Cognito accepts
+  // only one MFA preference update at a time, so those calls share one request.
+  if (!authenticatorRecord) {
+    authenticatorRecord = saveAuthenticatorPreference();
+  }
+  return authenticatorRecord;
+}
+
+async function saveAuthenticatorPreference(): Promise<void> {
   try {
     await configureAuth();
     await updateMFAPreference({ totp: 'PREFERRED' });
   } catch {
-    // An account that has not finished authenticator setup cannot record one.
+    authenticatorRecord = null;
   }
 }
 

@@ -107,6 +107,39 @@ def test_directory_describes_each_account(monkeypatch):
     assert pool.preference_calls == ["paused", "ready"]
 
 
+def test_a_colliding_mfa_save_uses_the_preference_the_other_save_wrote(monkeypatch):
+    monkeypatch.setenv("COGNITO_USER_POOL_ID", "pool")
+    monkeypatch.setattr("potty_train.directory.sessions_by_user", lambda: {})
+    pool = Pool()
+    pool.pages = [{"Users": [_user("ready", "ready@example.com", "CONFIRMED", enabled=True)]}]
+    pool.mfa = {}
+
+    def collide(**kwargs):
+        pool.preference_calls.append(kwargs["Username"])
+        pool.mfa[kwargs["Username"]] = ["SOFTWARE_TOKEN_MFA"]
+        raise DirectoryError("TooManyRequestsException")
+
+    pool.admin_set_user_mfa_preference = collide  # type: ignore[method-assign]
+    people = list_users(pool)
+    assert people[0]["authenticator"] is True
+
+
+def test_a_colliding_mfa_save_stays_off_when_nothing_was_saved(monkeypatch):
+    monkeypatch.setenv("COGNITO_USER_POOL_ID", "pool")
+    monkeypatch.setattr("potty_train.directory.sessions_by_user", lambda: {})
+    pool = Pool()
+    pool.pages = [{"Users": [_user("ready", "ready@example.com", "CONFIRMED", enabled=True)]}]
+    pool.mfa = {}
+
+    def collide(**kwargs):
+        pool.preference_calls.append(kwargs["Username"])
+        raise DirectoryError("TooManyRequestsException")
+
+    pool.admin_set_user_mfa_preference = collide  # type: ignore[method-assign]
+    people = list_users(pool)
+    assert people[0]["authenticator"] is False
+
+
 def test_a_saved_row_names_the_account(monkeypatch):
     monkeypatch.setattr("potty_train.directory.token_username", lambda token: "owner" if token == "token" else "")
     monkeypatch.setenv("COGNITO_USER_POOL_ID", "pool")

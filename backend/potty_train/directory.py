@@ -117,13 +117,29 @@ def _authenticator(client: Any, pool_id: str, username: str, detail: dict[str, A
             SoftwareTokenMfaSettings={"Enabled": True, "PreferredMfa": True},
         )
     except Exception as exc:
-        if _code(exc) == "InvalidParameterException":
+        code = _code(exc)
+        if code == "InvalidParameterException":
             return False
-        if _code(exc):
+        if code == "TooManyRequestsException":
+            return _saved_authenticator(client, pool_id, username)
+        if code:
             logger.exception("Could not record authenticator status for %s", username)
             return False
         raise
     return True
+
+
+def _saved_authenticator(client: Any, pool_id: str, username: str) -> bool:
+    """Read the preference after another save won the race."""
+    try:
+        detail = client.admin_get_user(UserPoolId=pool_id, Username=username)
+    except Exception as exc:
+        if _code(exc):
+            logger.exception("Could not read authenticator status for %s", username)
+            return False
+        raise
+    settings = detail.get("UserMFASettingList") or []
+    return "SOFTWARE_TOKEN_MFA" in settings or detail.get("PreferredMfaSetting") == "SOFTWARE_TOKEN_MFA"
 
 
 def _status(user_status: str, enabled: bool) -> tuple[str, str]:
