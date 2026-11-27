@@ -92,3 +92,20 @@ jobs:
         run: |
           terraform init -input=false
           terraform apply -input=false -auto-approve -lock-timeout=5m
+          # Force-delete orphaned pre-aggregation secrets (no recovery window).
+          # Idempotent once those names are gone. DeleteSecret deny is scoped to
+          # potty-log only, so these three remain allowed.
+          for name in potty-log-password potty-log-token-key potty-log-vapid; do
+            for attempt in 1 2 3 4 5 6; do
+              aws secretsmanager describe-secret --secret-id "$name" >/dev/null 2>&1 || break
+              if aws secretsmanager delete-secret --secret-id "$name" --force-delete-without-recovery; then
+                echo "Deleted $name"
+                break
+              fi
+              if [ "$attempt" -eq 6 ]; then
+                echo "Failed to delete $name" >&2
+                exit 1
+              fi
+              sleep $((attempt * 10))
+            done
+          done
