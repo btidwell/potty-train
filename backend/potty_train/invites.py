@@ -9,18 +9,30 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _EXISTS = {"UsernameExistsException", "AliasExistsException"}
 
 
 def normalize_email(value: str) -> str:
+    """Return a trimmed lowercase email, or raise if it is not usable.
+
+    Validation is plain string checks on purpose. A naive
+    ``[^@\\s]+@[^@\\s]+\\.[^@\\s]+`` pattern is polynomial-time against
+    crafted input (CodeQL ``py/polynomial-redos``).
+    """
     email = value.strip().lower()
-    if not _EMAIL.fullmatch(email) or len(email) > 254:
+    if len(email) > 254 or any(ch.isspace() for ch in email):
+        raise ValueError("Enter an email address.")
+    if email.count("@") != 1:
+        raise ValueError("Enter an email address.")
+    local, domain = email.split("@", 1)
+    if not local or not domain or "." not in domain:
+        raise ValueError("Enter an email address.")
+    label, _, rest = domain.rpartition(".")
+    if not label or not rest:
         raise ValueError("Enter an email address.")
     return email
 
