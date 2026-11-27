@@ -738,9 +738,93 @@ app-sheet .sheet-head { margin-bottom: 1.25rem; }
   border: 1px solid var(--line);
 }
 
-.chat-answer p {
-  margin: 0;
-  white-space: pre-wrap;
+.chat-markdown > :first-child {
+  margin-top: 0;
+}
+
+.chat-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown p,
+.chat-markdown ul,
+.chat-markdown ol,
+.chat-markdown pre,
+.chat-markdown blockquote,
+.chat-markdown table {
+  margin: 0 0 0.7rem;
+}
+
+.chat-markdown p:last-child,
+.chat-markdown ul:last-child,
+.chat-markdown ol:last-child,
+.chat-markdown pre:last-child,
+.chat-markdown blockquote:last-child,
+.chat-markdown table:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4 {
+  margin: 0 0 0.45rem;
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.chat-markdown ul,
+.chat-markdown ol {
+  padding-left: 1.25rem;
+}
+
+.chat-markdown li + li {
+  margin-top: 0.2rem;
+}
+
+.chat-markdown a {
+  color: var(--moss);
+}
+
+.chat-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  padding: 0.1em 0.35em;
+  border-radius: 0.35rem;
+  background: var(--script-neutral);
+}
+
+.chat-markdown pre {
+  overflow: auto;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.65rem;
+  background: var(--script-neutral);
+  border: 1px solid var(--line);
+}
+
+.chat-markdown pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.chat-markdown blockquote {
+  margin-left: 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+}
+
+.chat-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+.chat-markdown th,
+.chat-markdown td {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  text-align: left;
 }
 
 .chat-pending {

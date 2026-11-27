@@ -57,9 +57,7 @@
               </details>
             }
             @if (message.text) {
-              <div class="chat-answer">
-                <p>{{ message.text }}</p>
-              </div>
+              <div class="chat-answer chat-markdown" [innerHTML]="message.text | markdown"></div>
             }
           </article>
         }
