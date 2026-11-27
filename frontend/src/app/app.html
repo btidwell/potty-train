@@ -11,6 +11,7 @@
       <button type="button" class="quiet refresh" (click)="refresh()" [disabled]="api.busy() || refreshing()">
         {{ refreshing() ? 'Refreshing…' : 'Refresh' }}
       </button>
+      <app-chat />
     </div>
   </header>
 }

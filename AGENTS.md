@@ -4,10 +4,12 @@ Phone-friendly log for a scheduled-sit potty plan. The practice sheet is the rul
 
 ## Layout
 
-- `frontend/` is the Angular app. Routes are hash URLs: `/#/now`, `/#/sheet`, `/#/people`, `/#/guide`, `/#/settings`, `/#/login`. The dev server proxies `/api` to `127.0.0.1:8787`.
+- `frontend/` is the Angular app. Routes are hash URLs: `/#/now`, `/#/sheet`, `/#/people`, `/#/guide`, `/#/settings`, `/#/login`. Authenticated pages show an **Ask** control that opens the streaming chat panel. The dev server proxies `/api` to `127.0.0.1:8787`.
 - `backend/potty_train/` is the API. Production is the Lambda `potty_train.handler.handler`. `backend/local_server.py` is the local stand-in. It writes gitignored `backend/.local-*` files.
+- `backend/potty_mcp/` is the MCP tool Lambda (`potty_mcp.handler.handler`).
+- `backend/potty_agent/` is the Strands streaming chat agent (Lambda Web Adapter + `/api/chat`).
 - `backend/tests/` is pytest. Those tests are the spec for the schedule, especially `test_rules.py`. The frontend has no unit tests.
-- `infra/terraform/` is the live AWS stack. `infra/app.py` is the old CDK app.
+- `infra/terraform/` is the live AWS stack. `infra/app.py` is the old CDK app. App secrets are one Secrets Manager ARN (`potty-log`) with JSON key/value pairs.
 
 ## Commands
 
@@ -44,6 +46,7 @@ Leave these in place unless the task changes them:
 
 - Backend tests do not need AWS, Cognito, or network.
 - Sign-in needs `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, and optionally `COGNITO_REGION` (default `us-east-1`). On a laptop those come from gitignored `backend/.local-cognito.json`. In the cloud they have to be [Cursor Secrets](https://cursor.com/dashboard/cloud-agents). Without them the API still starts, and the login page reports that sign-in is not configured. Do not add an auth bypass.
+- Chat needs an xAI API key in the aggregated app secret key `xai_api_key` (or local `backend/.local-secrets.json` / `XAI_API_KEY`). Do not commit that key.
 - Do not run `terraform apply`, `scripts/deploy.ps1`, or `python backend/package_lambda.py` unless the task is a deploy.
 - Do not commit `.env`, `backend/.local-*`, `deploy.auto.tfvars`, or Terraform state.
 - Ports 4200 (web) and 8787 (API) are forwarded. Nothing listens on them until the processes above are started.

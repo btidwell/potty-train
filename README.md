@@ -28,13 +28,18 @@ npm start
 
 Open http://localhost:4200 . The dev server proxies `/api` to http://127.0.0.1:8787 . This local server is only a stand-in. The deployed API is the Lambda function.
 
+Optional local chat: put `{"xai_api_key":"..."}` in gitignored `backend/.local-secrets.json`, then use **Ask** in the top-right on any signed-in page.
+
 ## Deploy to AWS
 
 The live stack is Terraform, in `infra/terraform/`.
 
 - **S3** `ui` holds the Angular build. It is private. CloudFront reads it with origin access control.
 - **S3** `data` holds one versioned object, `state/potty-log.json`. Public access is blocked, TLS is required, and the bucket is kept if you delete the stack.
-- **Lambda** runs `potty_train.handler.handler`. It can read and write that one object, read the VAPID secret, and manage the two reminder schedules.
+- **Lambda** `potty-log-api` runs `potty_train.handler.handler`. It can read and write that one object, read the app secret, and manage the two reminder schedules.
+- **Lambda** `potty-log-mcp` serves schedule/sheet tools over MCP (IAM Function URL).
+- **Lambda** `potty-log-agent` is a streaming Strands chat agent (x.ai + OTEL). CloudFront routes `/api/chat*` to it.
+- **Secrets Manager** holds one aggregated secret (`potty-log`) as JSON key/value pairs: `password`, `token_key`, `vapid_private_pem`, `vapid_public_pem`, `xai_api_key`. Add the xAI key in the console after apply; Terraform will not overwrite later edits.
 - **Cognito** is the user directory. The username is the email address. Public sign-up is off. The owner invites someone from Settings, and Cognito emails a temporary password. MFA is a TOTP authenticator app. The refresh token lasts 7 days from login. The browser holds tokens in cookies.
 - **CloudFront** serves the site and `/api/*` to viewers in the United States. The geographic restriction is CloudFront's built-in allow list. The API origin checks a shared header, so skipping CloudFront does not reach the Lambda.
 
