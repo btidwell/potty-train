@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from potty_agent.stream import _normalize, sse
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_sse_format():
@@ -32,3 +35,14 @@ def test_normalize_thought_text_and_tool():
 def test_normalize_ignores_unknown():
     assert _normalize({"noop": True}) == []
     assert _normalize("x") == []
+
+
+def test_agent_package_ships_jwt_for_chat_auth():
+    """Every /api/chat call imports potty_train.auth, which needs PyJWT in the zip."""
+    requirements = (ROOT / "backend" / "requirements-agent.txt").read_text(encoding="utf-8")
+    assert "PyJWT" in requirements
+    from potty_train.auth import token_is_valid
+    from potty_train.sessions import owns
+
+    assert callable(token_is_valid)
+    assert callable(owns)

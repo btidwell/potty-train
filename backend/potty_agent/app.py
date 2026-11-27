@@ -28,53 +28,57 @@ async def health(_request: Request) -> Response:
 
 
 async def chat(request: Request) -> Response:
-    if not _origin_ok(request):
-        return JSONResponse({"error": "Forbidden."}, status_code=403)
-    if not await _authorized(request):
-        return JSONResponse({"error": "Sign in again."}, status_code=401)
-
     try:
-        payload = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Request body must be JSON."}, status_code=400)
-    if not isinstance(payload, dict):
-        return JSONResponse({"error": "Request body must be an object."}, status_code=400)
+        if not _origin_ok(request):
+            return JSONResponse({"error": "Forbidden."}, status_code=403)
+        if not await _authorized(request):
+            return JSONResponse({"error": "Sign in again."}, status_code=401)
 
-    message = str(payload.get("message") or "").strip()
-    if not message:
-        return JSONResponse({"error": "Say something for the assistant."}, status_code=400)
-    if len(message) > 4000:
-        return JSONResponse({"error": "That message is too long."}, status_code=400)
-
-    history = payload.get("history")
-    prompt = _prompt_with_history(message, history)
-
-    async def generate():
         try:
-            with open_agent() as agent:
-                async for chunk in iter_chat_events(agent, prompt):
-                    yield chunk
-        except RuntimeError as exc:
-            yield sse({"type": "error", "message": str(exc)})
-            yield sse({"type": "done"})
+            payload = await request.json()
         except Exception:
-            logger.exception("Chat stream failed.")
-            yield sse({"type": "error", "message": "The assistant failed."})
-            yield sse({"type": "done"})
+            return JSONResponse({"error": "Request body must be JSON."}, status_code=400)
+        if not isinstance(payload, dict):
+            return JSONResponse({"error": "Request body must be an object."}, status_code=400)
 
-    headers = {
-        "Cache-Control": "no-store",
-        "X-Content-Type-Options": "nosniff",
-    }
-    origin = os.environ.get("CORS_ORIGIN", "")
-    if origin:
-        headers["Access-Control-Allow-Origin"] = origin
-        headers["Access-Control-Allow-Headers"] = (
-            "Authorization, Content-Type, X-Potty-Authorization, X-Potty-Session, X-Potty-Origin"
-        )
-        headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        message = str(payload.get("message") or "").strip()
+        if not message:
+            return JSONResponse({"error": "Say something for the assistant."}, status_code=400)
+        if len(message) > 4000:
+            return JSONResponse({"error": "That message is too long."}, status_code=400)
 
-    return StreamingResponse(generate(), media_type="text/event-stream", headers=headers)
+        history = payload.get("history")
+        prompt = _prompt_with_history(message, history)
+
+        async def generate():
+            try:
+                with open_agent() as agent:
+                    async for chunk in iter_chat_events(agent, prompt):
+                        yield chunk
+            except RuntimeError as exc:
+                yield sse({"type": "error", "message": str(exc)})
+                yield sse({"type": "done"})
+            except Exception:
+                logger.exception("Chat stream failed.")
+                yield sse({"type": "error", "message": "The assistant failed."})
+                yield sse({"type": "done"})
+
+        headers = {
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+        }
+        origin = os.environ.get("CORS_ORIGIN", "")
+        if origin:
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Headers"] = (
+                "Authorization, Content-Type, X-Potty-Authorization, X-Potty-Session, X-Potty-Origin"
+            )
+            headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+
+        return StreamingResponse(generate(), media_type="text/event-stream", headers=headers)
+    except Exception:
+        logger.exception("Chat request failed before streaming.")
+        return JSONResponse({"error": "The assistant is unavailable."}, status_code=500)
 
 
 async def options_chat(request: Request) -> Response:

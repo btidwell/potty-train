@@ -1,3 +1,5 @@
 strands-agents[openai,otel]==1.67.0
 mcp-proxy-for-aws==2.0.0
 uvicorn>=0.37,<1
+# potty_train.auth runs on every /api/chat request (Cognito JWT check).
+PyJWT==2.10.1
