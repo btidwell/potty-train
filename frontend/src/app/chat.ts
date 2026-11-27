@@ -191,14 +191,16 @@ function summarizeToolResult(raw: string): string {
     const parsed = JSON.parse(trimmed) as unknown;
     if (parsed && typeof parsed === 'object') {
       const record = parsed as Record<string, unknown>;
-      if (typeof record.ok === 'boolean') {
-        return record.ok ? 'Updated the log.' : String(record.error || record.message || 'Tool returned an error.');
+      if (typeof record['ok'] === 'boolean') {
+        return record['ok']
+          ? 'Updated the log.'
+          : String(record['error'] || record['message'] || 'Tool returned an error.');
       }
-      if (typeof record.error === 'string') {
-        return record.error;
+      if (typeof record['error'] === 'string') {
+        return record['error'];
       }
-      if (typeof record.message === 'string') {
-        return record.message;
+      if (typeof record['message'] === 'string') {
+        return record['message'];
       }
     }
   } catch {
