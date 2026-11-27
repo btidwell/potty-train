@@ -115,10 +115,24 @@ resource "aws_iam_role_policy" "github_deploy" {
         ]
         Resource = [
           "arn:aws:iam::143977713810:role/potty-log-api",
-          "arn:aws:iam::143977713810:role/potty-log-mcp",
-          "arn:aws:iam::143977713810:role/potty-log-agent",
           "arn:aws:iam::143977713810:role/potty-log-scheduler",
           "arn:aws:iam::143977713810:role/potty-log-github-deploy",
+        ]
+      },
+      {
+        Sid    = "ReadOwnerManagedRoles"
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole",
+          "iam:ListRolePolicies",
+          "iam:GetRolePolicy",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListInstanceProfilesForRole",
+          "iam:ListRoleTags",
+        ]
+        Resource = [
+          "arn:aws:iam::143977713810:role/potty-log-mcp",
+          "arn:aws:iam::143977713810:role/potty-log-agent",
         ]
       },
       {

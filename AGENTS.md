@@ -50,3 +50,20 @@ Leave these in place unless the task changes them:
 - Do not run `terraform apply`, `scripts/deploy.ps1`, or `python backend/package_lambda.py` unless the task is a deploy.
 - Do not commit `.env`, `backend/.local-*`, `deploy.auto.tfvars`, or Terraform state.
 - Ports 4200 (web) and 8787 (API) are forwarded. Nothing listens on them until the processes above are started.
+
+### IAM roles (owner-created)
+
+Do **not** create new IAM roles through Terraform or the GitHub Actions deploy role (`potty-log-github-deploy`). Ben creates roles himself.
+
+When a change needs a new role (or a material policy change on an existing owner-managed role):
+
+1. Stop before wiring Terraform to create the role.
+2. Give Ben, in chat:
+   - Desired **role name**
+   - Full **trust policy** JSON
+   - Full **permissions policy** JSON (and any managed-policy ARNs to attach, e.g. `AWSLambdaBasicExecutionRole`)
+   - Brief why the role is needed
+3. Wait for Ben to reply with the **role ARN**.
+4. Only then reference that role in Terraform (data source by name, or a variable holding the ARN). Do not add `aws_iam_role` for owner-managed roles.
+
+Owner-managed app roles today: `potty-log-mcp`, `potty-log-agent`. Legacy roles still created by Terraform (`potty-log-api`, `potty-log-scheduler`, `potty-log-github-deploy`) stay as they are unless Ben asks to migrate them.

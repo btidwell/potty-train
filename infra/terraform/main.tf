@@ -298,7 +298,7 @@ resource "aws_lambda_function_url" "api" {
 
 resource "aws_lambda_function" "mcp" {
   function_name    = "potty-log-mcp"
-  role             = aws_iam_role.mcp.arn
+  role             = data.aws_iam_role.mcp.arn
   runtime          = "python3.12"
   handler          = "potty_mcp.handler.handler"
   filename         = data.archive_file.mcp.output_path
@@ -321,8 +321,6 @@ resource "aws_lambda_function" "mcp" {
 
   depends_on = [
     aws_cloudwatch_log_group.mcp,
-    aws_iam_role_policy_attachment.mcp_basic,
-    aws_iam_role_policy.mcp,
   ]
 }
 
@@ -334,7 +332,7 @@ resource "aws_lambda_function_url" "mcp" {
 
 resource "aws_lambda_function" "agent" {
   function_name = "potty-log-agent"
-  role          = aws_iam_role.agent.arn
+  role          = data.aws_iam_role.agent.arn
   runtime       = "python3.12"
   # Lambda Web Adapter starts uvicorn via run.sh.
   handler          = "run.sh"
@@ -379,8 +377,6 @@ resource "aws_lambda_function" "agent" {
 
   depends_on = [
     aws_cloudwatch_log_group.agent,
-    aws_iam_role_policy_attachment.agent_basic,
-    aws_iam_role_policy.agent,
   ]
 }
 

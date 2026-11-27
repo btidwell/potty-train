@@ -114,96 +114,11 @@ resource "aws_iam_role_policy" "scheduler" {
   })
 }
 
-resource "aws_iam_role" "mcp" {
+# Owner-created Lambda roles. Ben creates these outside Terraform; see AGENTS.md.
+data "aws_iam_role" "mcp" {
   name = "potty-log-mcp"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect    = "Allow"
-        Principal = { Service = "lambda.amazonaws.com" }
-        Action    = "sts:AssumeRole"
-      }
-    ]
-  })
 }
 
-resource "aws_iam_role_policy_attachment" "mcp_basic" {
-  role       = aws_iam_role.mcp.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-resource "aws_iam_role_policy" "mcp" {
-  name = "potty-log-mcp"
-  role = aws_iam_role.mcp.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid      = "ReadWriteLogObject"
-        Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:PutObject"]
-        Resource = [
-          "${aws_s3_bucket.data.arn}/state/potty-log.json",
-          "${aws_s3_bucket.data.arn}/state/sessions.json",
-        ]
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role" "agent" {
+data "aws_iam_role" "agent" {
   name = "potty-log-agent"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect    = "Allow"
-        Principal = { Service = "lambda.amazonaws.com" }
-        Action    = "sts:AssumeRole"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "agent_basic" {
-  role       = aws_iam_role.agent.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-resource "aws_iam_role_policy" "agent" {
-  name = "potty-log-agent"
-  role = aws_iam_role.agent.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid      = "ReadSessions"
-        Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:PutObject"]
-        Resource = [
-          "${aws_s3_bucket.data.arn}/state/sessions.json",
-        ]
-      },
-      {
-        Sid      = "ReadAppSecret"
-        Effect   = "Allow"
-        Action   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
-        Resource = aws_secretsmanager_secret.app.arn
-      },
-      {
-        Sid    = "InvokeMcpUrl"
-        Effect = "Allow"
-        Action = [
-          "lambda:InvokeFunctionUrl",
-          "lambda:InvokeFunction",
-        ]
-        Resource = aws_lambda_function.mcp.arn
-      }
-    ]
-  })
 }
