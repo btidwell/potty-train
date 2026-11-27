@@ -41,8 +41,20 @@ class Directory:
 
 def test_invite_email_must_look_like_an_email():
     assert normalize_email("  Person@Example.com ") == "person@example.com"
-    with pytest.raises(ValueError):
-        normalize_email("not-an-email")
+    assert normalize_email("a@b.c.d") == "a@b.c.d"
+    for bad in (
+        "not-an-email",
+        "a@",
+        "@b.com",
+        "a@b.",
+        "a@.com",
+        "a@b c.com",
+        "a@@b.com",
+        # Old regex backtracked on this shape (CodeQL py/polynomial-redos).
+        "!@" + ("!." * 50),
+    ):
+        with pytest.raises(ValueError):
+            normalize_email(bad)
 
 
 def test_new_address_is_created(monkeypatch):
