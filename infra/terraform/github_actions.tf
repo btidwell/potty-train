@@ -37,7 +37,9 @@ resource "aws_iam_role_policy" "github_deploy" {
   role = aws_iam_role.github_deploy.id
 
   # Scoped to this stack. CloudFront and a few list calls have no resource ARN.
-  # The data bucket and the three app secrets cannot be deleted from CI.
+  # The data bucket cannot be deleted from CI. The aggregated app secret is
+  # protected by Terraform prevent_destroy rather than an IAM DeleteSecret deny,
+  # so deploy can force-delete retired pre-aggregation secret names.
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -192,12 +194,6 @@ resource "aws_iam_role_policy" "github_deploy" {
         Sid      = "PottySecrets"
         Effect   = "Allow"
         Action   = ["secretsmanager:*"]
-        Resource = "arn:aws:secretsmanager:us-east-1:143977713810:secret:potty-log-*"
-      },
-      {
-        Sid      = "KeepPottySecrets"
-        Effect   = "Deny"
-        Action   = ["secretsmanager:DeleteSecret"]
         Resource = "arn:aws:secretsmanager:us-east-1:143977713810:secret:potty-log-*"
       },
       {

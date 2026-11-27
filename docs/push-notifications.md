@@ -46,7 +46,7 @@ Build the push payload with the same copy as `maybeNotify`:
 
 ### Keys
 
-- Terraform `tls_private_key` ECDSA P-256 (`algorithm = "ECDSA"`, `ecdsa_curve = "P256"`), stored in Secrets Manager as `potty-log-vapid`. Secret string JSON: `private_pem` and `public_pem`. `prevent_destroy` on the secret, same as `potty-log-password` and `potty-log-token-key`.
+- VAPID PEMs live on the aggregated Secrets Manager secret `potty-log` as `vapid_private_pem` and `vapid_public_pem`.
 - Lambda derives the browser `applicationServerKey`: uncompressed X9.62 point (`0x04 || X || Y`, 65 bytes), base64url, no padding. `pywebpush` already pulls `cryptography`; load the public PEM and encode `public_numbers()`.
 - Include `push.public_key` (that base64url string) on the authenticated public state. Do not return stored subscriptions from `public_state`. Strip `state["reminders"]` and `state["push_subscriptions"]` from the public response.
 - VAPID `sub` claim: a stable mailto, from env `VAPID_SUBJECT`. Set it to `mailto:btidwel3@gmail.com` unless a different contact is supplied at deploy. Apple expects a contact `sub`.
@@ -125,13 +125,13 @@ Lambda role (`potty-log-api`), in addition to the S3 and secret reads it already
 
 - `scheduler:CreateSchedule`, `scheduler:UpdateSchedule`, `scheduler:DeleteSchedule`, `scheduler:GetSchedule` on `arn:aws:scheduler:us-east-1:143977713810:schedule/default/potty-log-*`
 - `iam:PassRole` on the scheduler role, conditioned on `iam:PassedToService` = `scheduler.amazonaws.com`
-- `secretsmanager:GetSecretValue` and `secretsmanager:DescribeSecret` on `potty-log-vapid`, matching the existing secret statements
+- `secretsmanager:GetSecretValue` and `secretsmanager:DescribeSecret` on `potty-log` (`APP_SECRET_ARN`)
 
 Scheduler role (new) trusts `scheduler.amazonaws.com` and can `lambda:InvokeFunction` on `potty-log-api`.
 
 Lambda env, added to the existing variables:
 
-- `VAPID_SECRET_ARN`
+- `APP_SECRET_ARN`
 - `SCHEDULER_ROLE_ARN`
 - `SCHEDULE_TARGET_ARN`: build `arn:aws:lambda:us-east-1:143977713810:function:potty-log-api` from the known function name. Do not reference the Lambda resource inside its own environment block (that self-reference cycles).
 - `VAPID_SUBJECT`

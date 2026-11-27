@@ -51,10 +51,7 @@ resource "aws_iam_role_policy" "api" {
         Sid      = "ReadAppSecrets"
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
-        Resource = [
-          aws_secretsmanager_secret.app.arn,
-          aws_secretsmanager_secret.vapid.arn,
-        ]
+        Resource = [aws_secretsmanager_secret.app.arn]
       },
       {
         Sid    = "ManageTimerSchedules"

@@ -92,104 +92,13 @@ resource "aws_s3_bucket_public_access_block" "ui" {
   restrict_public_buckets = true
 }
 
-resource "random_password" "password" {
-  length  = 20
-  special = false
-}
-
-resource "random_password" "token_key" {
-  length  = 48
-  special = false
-}
-
 resource "random_password" "origin_header" {
   length  = 32
   special = false
 }
 
-resource "aws_secretsmanager_secret" "password" {
-  name        = "potty-log-password"
-  description = "Password for the potty training log."
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "password" {
-  secret_id     = aws_secretsmanager_secret.password.id
-  secret_string = random_password.password.result
-
-  lifecycle {
-    ignore_changes = [secret_string]
-  }
-}
-
-resource "aws_secretsmanager_secret" "token_key" {
-  name        = "potty-log-token-key"
-  description = "HMAC key for potty log session tokens."
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "token_key" {
-  secret_id     = aws_secretsmanager_secret.token_key.id
-  secret_string = random_password.token_key.result
-
-  lifecycle {
-    ignore_changes = [secret_string]
-  }
-}
-
-resource "tls_private_key" "vapid" {
-  algorithm   = "ECDSA"
-  ecdsa_curve = "P256"
-}
-
-resource "aws_secretsmanager_secret" "vapid" {
-  name        = "potty-log-vapid"
-  description = "VAPID signing key for potty log web push."
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "vapid" {
-  secret_id = aws_secretsmanager_secret.vapid.id
-  secret_string = jsonencode({
-    private_pem = tls_private_key.vapid.private_key_pem
-    public_pem  = tls_private_key.vapid.public_key_pem
-  })
-
-  lifecycle {
-    ignore_changes = [secret_string]
-  }
-}
-
-# One ARN for every app secret. Existing values are copied in once; later
-# edits (for example adding xai_api_key) are done in the console and kept.
-data "aws_secretsmanager_secret_version" "password_current" {
-  secret_id  = aws_secretsmanager_secret.password.id
-  depends_on = [aws_secretsmanager_secret_version.password]
-}
-
-data "aws_secretsmanager_secret_version" "token_key_current" {
-  secret_id  = aws_secretsmanager_secret.token_key.id
-  depends_on = [aws_secretsmanager_secret_version.token_key]
-}
-
-data "aws_secretsmanager_secret_version" "vapid_current" {
-  secret_id  = aws_secretsmanager_secret.vapid.id
-  depends_on = [aws_secretsmanager_secret_version.vapid]
-}
-
-locals {
-  vapid_current = jsondecode(data.aws_secretsmanager_secret_version.vapid_current.secret_string)
-}
-
+# One ARN for every app secret. Live values are edited in the console and
+# kept; Terraform only creates the secret shell on a fresh stack.
 resource "aws_secretsmanager_secret" "app" {
   name        = "potty-log"
   description = "All potty-log secrets as JSON key/value pairs."
@@ -202,10 +111,10 @@ resource "aws_secretsmanager_secret" "app" {
 resource "aws_secretsmanager_secret_version" "app" {
   secret_id = aws_secretsmanager_secret.app.id
   secret_string = jsonencode({
-    password          = data.aws_secretsmanager_secret_version.password_current.secret_string
-    token_key         = data.aws_secretsmanager_secret_version.token_key_current.secret_string
-    vapid_private_pem = local.vapid_current.private_pem
-    vapid_public_pem  = local.vapid_current.public_pem
+    password          = ""
+    token_key         = ""
+    vapid_private_pem = ""
+    vapid_public_pem  = ""
     xai_api_key       = ""
   })
 
@@ -270,7 +179,6 @@ resource "aws_lambda_function" "api" {
       COGNITO_REGION          = var.aws_region
       POTTY_ORIGIN_SECRET     = random_password.origin_header.result
       APP_SECRET_ARN          = aws_secretsmanager_secret.app.arn
-      VAPID_SECRET_ARN        = aws_secretsmanager_secret.vapid.arn
       VAPID_SUBJECT           = var.vapid_subject
       SCHEDULER_ROLE_ARN      = aws_iam_role.scheduler.arn
       # Literal on purpose. Referencing aws_lambda_function.api from its own
