@@ -1,8 +1,8 @@
 # GitHub Actions on main assumes this role. There are no long-lived keys.
-# A workflow can assume it only when both of these are true:
-# - the push is to main. This repo uses immutable subject claims, so sub
-#   includes the owner id and repository id, not only the names.
-# - the job file is .github/workflows/deploy.yml on that same commit
+# The subject claim is limited to a push to main of this repository. This
+# repo uses immutable subject claims, so sub includes the owner id and
+# repository id. AWS does not accept workflow_ref as a condition key, so
+# the workflow file is not part of the trust policy.
 # The first apply has to come from a principal that already has IAM access.
 # After the role exists, later applies can come from the workflow.
 
@@ -23,9 +23,8 @@ resource "aws_iam_role" "github_deploy" {
         Action    = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
-            "token.actions.githubusercontent.com:aud"          = "sts.amazonaws.com"
-            "token.actions.githubusercontent.com:sub"          = "repo:btidwell@2204439/potty-train@1470478707:ref:refs/heads/main"
-            "token.actions.githubusercontent.com:workflow_ref" = "${var.github_repository}/.github/workflows/deploy.yml@refs/heads/main"
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+            "token.actions.githubusercontent.com:sub" = "repo:btidwell@2204439/potty-train@1470478707:ref:refs/heads/main"
           }
         }
       }
