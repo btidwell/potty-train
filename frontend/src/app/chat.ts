@@ -1,6 +1,7 @@
 import { Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Api, ChatStreamEvent } from './api';
+import { MarkdownPipe } from './markdown.pipe';
 
 type DetailItem =
   | { kind: 'thought'; text: string }
@@ -16,7 +17,7 @@ type ChatMessage = {
 
 @Component({
   selector: 'app-chat',
-  imports: [FormsModule],
+  imports: [FormsModule, MarkdownPipe],
   templateUrl: './chat.html',
 })
 export class ChatPanel {
