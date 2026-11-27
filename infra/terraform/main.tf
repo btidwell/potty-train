@@ -229,8 +229,14 @@ resource "terraform_data" "ui" {
     }
   }
 
+  # python, not powershell, so the same apply works on Windows and on the Linux runner.
   provisioner "local-exec" {
-    interpreter = ["powershell.exe", "-NoProfile", "-Command"]
-    command     = "$ErrorActionPreference = 'Stop'; aws s3 sync '${local.ui_dir}' 's3://${aws_s3_bucket.ui.bucket}' --delete --region us-east-1 --only-show-errors; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.site.id} --paths '/*'; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+    working_dir = abspath("${path.module}/../..")
+    command     = "python scripts/publish_ui.py"
+    environment = {
+      POTTY_UI_DIR          = local.ui_dir
+      POTTY_UI_BUCKET       = aws_s3_bucket.ui.bucket
+      POTTY_DISTRIBUTION_ID = aws_cloudfront_distribution.site.id
+    }
   }
 }
