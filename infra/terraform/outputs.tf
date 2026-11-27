@@ -32,3 +32,18 @@ output "viewer_countries" {
   description = "CloudFront geographic allow list."
   value       = aws_cloudfront_distribution.site.restrictions[0].geo_restriction[0].locations
 }
+
+output "app_secret_arn" {
+  description = "Aggregated Secrets Manager ARN (JSON key/value pairs)."
+  value       = aws_secretsmanager_secret.app.arn
+}
+
+output "mcp_function_url" {
+  description = "IAM-protected MCP tool server Function URL."
+  value       = aws_lambda_function_url.mcp.function_url
+}
+
+output "agent_function_url" {
+  description = "IAM-protected streaming chat agent Function URL."
+  value       = aws_lambda_function_url.agent.function_url
+}

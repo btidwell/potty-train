@@ -86,6 +86,10 @@ resource "aws_iam_role_policy" "github_deploy" {
         Resource = [
           "arn:aws:lambda:us-east-1:143977713810:function:potty-log-api",
           "arn:aws:lambda:us-east-1:143977713810:function:potty-log-api:*",
+          "arn:aws:lambda:us-east-1:143977713810:function:potty-log-mcp",
+          "arn:aws:lambda:us-east-1:143977713810:function:potty-log-mcp:*",
+          "arn:aws:lambda:us-east-1:143977713810:function:potty-log-agent",
+          "arn:aws:lambda:us-east-1:143977713810:function:potty-log-agent:*",
         ]
       },
       {
@@ -111,6 +115,8 @@ resource "aws_iam_role_policy" "github_deploy" {
         ]
         Resource = [
           "arn:aws:iam::143977713810:role/potty-log-api",
+          "arn:aws:iam::143977713810:role/potty-log-mcp",
+          "arn:aws:iam::143977713810:role/potty-log-agent",
           "arn:aws:iam::143977713810:role/potty-log-scheduler",
           "arn:aws:iam::143977713810:role/potty-log-github-deploy",
         ]
@@ -121,6 +127,8 @@ resource "aws_iam_role_policy" "github_deploy" {
         Action = ["iam:PassRole"]
         Resource = [
           "arn:aws:iam::143977713810:role/potty-log-api",
+          "arn:aws:iam::143977713810:role/potty-log-mcp",
+          "arn:aws:iam::143977713810:role/potty-log-agent",
           "arn:aws:iam::143977713810:role/potty-log-scheduler",
         ]
         Condition = {
@@ -201,7 +209,17 @@ resource "aws_iam_role_policy" "github_deploy" {
         Resource = [
           "arn:aws:logs:us-east-1:143977713810:log-group:/aws/lambda/potty-log-api",
           "arn:aws:logs:us-east-1:143977713810:log-group:/aws/lambda/potty-log-api:*",
+          "arn:aws:logs:us-east-1:143977713810:log-group:/aws/lambda/potty-log-mcp",
+          "arn:aws:logs:us-east-1:143977713810:log-group:/aws/lambda/potty-log-mcp:*",
+          "arn:aws:logs:us-east-1:143977713810:log-group:/aws/lambda/potty-log-agent",
+          "arn:aws:logs:us-east-1:143977713810:log-group:/aws/lambda/potty-log-agent:*",
         ]
+      },
+      {
+        Sid      = "LambdaWebAdapterLayer"
+        Effect   = "Allow"
+        Action   = ["lambda:GetLayerVersion"]
+        Resource = "arn:aws:lambda:us-east-1:753240598075:layer:LambdaAdapterLayerX86:*"
       },
       {
         Sid    = "CloudFront"

@@ -6,6 +6,14 @@ resource "aws_cloudfront_origin_access_control" "api" {
   signing_protocol                  = "sigv4"
 }
 
+resource "aws_cloudfront_origin_access_control" "agent" {
+  name                              = "potty-log-agent"
+  description                       = "Sign requests from CloudFront to the chat agent function URL."
+  origin_access_control_origin_type = "lambda"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
 resource "aws_cloudfront_origin_access_control" "ui" {
   name                              = "potty-log-ui"
   description                       = "Read the private UI bucket."
@@ -46,6 +54,26 @@ resource "aws_cloudfront_distribution" "site" {
     }
   }
 
+  origin {
+    origin_id                = "agent"
+    domain_name              = trimsuffix(trimprefix(aws_lambda_function_url.agent.function_url, "https://"), "/")
+    origin_access_control_id = aws_cloudfront_origin_access_control.agent.id
+
+    custom_header {
+      name  = "X-Potty-Origin"
+      value = random_password.origin_header.result
+    }
+
+    custom_origin_config {
+      http_port                = 80
+      https_port               = 443
+      origin_protocol_policy   = "https-only"
+      origin_ssl_protocols     = ["TLSv1.2"]
+      origin_read_timeout      = 60
+      origin_keepalive_timeout = 60
+    }
+  }
+
   default_cache_behavior {
     target_origin_id           = "ui"
     viewer_protocol_policy     = "redirect-to-https"
@@ -53,6 +81,18 @@ resource "aws_cloudfront_distribution" "site" {
     cached_methods             = ["GET", "HEAD"]
     compress                   = true
     cache_policy_id            = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    response_headers_policy_id = "67f7725c-6f97-4210-82d7-5512b31e9d03"
+  }
+
+  ordered_cache_behavior {
+    path_pattern               = "/api/chat*"
+    target_origin_id           = "agent"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods             = ["GET", "HEAD", "OPTIONS"]
+    compress                   = false
+    cache_policy_id            = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    origin_request_policy_id   = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
     response_headers_policy_id = "67f7725c-6f97-4210-82d7-5512b31e9d03"
   }
 
@@ -99,6 +139,26 @@ resource "aws_lambda_permission" "cloudfront_invoke" {
   statement_id             = "AllowCloudFrontInvoke"
   action                   = "lambda:InvokeFunction"
   function_name            = aws_lambda_function.api.function_name
+  principal                = "cloudfront.amazonaws.com"
+  source_arn               = aws_cloudfront_distribution.site.arn
+  invoked_via_function_url = true
+}
+
+resource "aws_lambda_permission" "cloudfront_agent_url" {
+  statement_id           = "AllowCloudFrontAgentFunctionUrl"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.agent.function_name
+  principal              = "cloudfront.amazonaws.com"
+  source_arn             = aws_cloudfront_distribution.site.arn
+  function_url_auth_type = "AWS_IAM"
+
+  depends_on = [aws_lambda_function_url.agent]
+}
+
+resource "aws_lambda_permission" "cloudfront_agent_invoke" {
+  statement_id             = "AllowCloudFrontAgentInvoke"
+  action                   = "lambda:InvokeFunction"
+  function_name            = aws_lambda_function.agent.function_name
   principal                = "cloudfront.amazonaws.com"
   source_arn               = aws_cloudfront_distribution.site.arn
   invoked_via_function_url = true

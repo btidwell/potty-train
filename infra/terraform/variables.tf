@@ -10,3 +10,15 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+variable "xai_model_id" {
+  type        = string
+  description = "xAI model id used by the Strands chat agent."
+  default     = "grok-4-1-fast-reasoning"
+}
+
+variable "otel_exporter_otlp_endpoint" {
+  type        = string
+  description = "Optional OTLP endpoint for agent traces. Empty keeps the console exporter (CloudWatch Logs)."
+  default     = ""
+}
+

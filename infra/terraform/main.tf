@@ -119,6 +119,10 @@ resource "aws_secretsmanager_secret" "password" {
 resource "aws_secretsmanager_secret_version" "password" {
   secret_id     = aws_secretsmanager_secret.password.id
   secret_string = random_password.password.result
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 resource "aws_secretsmanager_secret" "token_key" {
@@ -133,6 +137,10 @@ resource "aws_secretsmanager_secret" "token_key" {
 resource "aws_secretsmanager_secret_version" "token_key" {
   secret_id     = aws_secretsmanager_secret.token_key.id
   secret_string = random_password.token_key.result
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 resource "tls_private_key" "vapid" {
@@ -155,6 +163,55 @@ resource "aws_secretsmanager_secret_version" "vapid" {
     private_pem = tls_private_key.vapid.private_key_pem
     public_pem  = tls_private_key.vapid.public_key_pem
   })
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+# One ARN for every app secret. Existing values are copied in once; later
+# edits (for example adding xai_api_key) are done in the console and kept.
+data "aws_secretsmanager_secret_version" "password_current" {
+  secret_id  = aws_secretsmanager_secret.password.id
+  depends_on = [aws_secretsmanager_secret_version.password]
+}
+
+data "aws_secretsmanager_secret_version" "token_key_current" {
+  secret_id  = aws_secretsmanager_secret.token_key.id
+  depends_on = [aws_secretsmanager_secret_version.token_key]
+}
+
+data "aws_secretsmanager_secret_version" "vapid_current" {
+  secret_id  = aws_secretsmanager_secret.vapid.id
+  depends_on = [aws_secretsmanager_secret_version.vapid]
+}
+
+locals {
+  vapid_current = jsondecode(data.aws_secretsmanager_secret_version.vapid_current.secret_string)
+}
+
+resource "aws_secretsmanager_secret" "app" {
+  name        = "potty-log"
+  description = "All potty-log secrets as JSON key/value pairs."
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "app" {
+  secret_id = aws_secretsmanager_secret.app.id
+  secret_string = jsonencode({
+    password          = data.aws_secretsmanager_secret_version.password_current.secret_string
+    token_key         = data.aws_secretsmanager_secret_version.token_key_current.secret_string
+    vapid_private_pem = local.vapid_current.private_pem
+    vapid_public_pem  = local.vapid_current.public_pem
+    xai_api_key       = ""
+  })
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 resource "aws_cloudwatch_log_group" "api" {
@@ -162,10 +219,34 @@ resource "aws_cloudwatch_log_group" "api" {
   retention_in_days = 30
 }
 
+resource "aws_cloudwatch_log_group" "mcp" {
+  name              = "/aws/lambda/potty-log-mcp"
+  retention_in_days = 30
+}
+
+resource "aws_cloudwatch_log_group" "agent" {
+  name              = "/aws/lambda/potty-log-agent"
+  retention_in_days = 30
+}
+
 data "archive_file" "api" {
   type        = "zip"
   source_dir  = "${path.module}/build/lambda"
   output_path = "${path.module}/build/api.zip"
+  excludes    = ["__pycache__", "**/__pycache__/**", "**/*.pyc"]
+}
+
+data "archive_file" "mcp" {
+  type        = "zip"
+  source_dir  = "${path.module}/build/mcp"
+  output_path = "${path.module}/build/mcp.zip"
+  excludes    = ["__pycache__", "**/__pycache__/**", "**/*.pyc"]
+}
+
+data "archive_file" "agent" {
+  type        = "zip"
+  source_dir  = "${path.module}/build/agent"
+  output_path = "${path.module}/build/agent.zip"
   excludes    = ["__pycache__", "**/__pycache__/**", "**/*.pyc"]
 }
 
@@ -188,6 +269,7 @@ resource "aws_lambda_function" "api" {
       COGNITO_CLIENT_ID       = aws_cognito_user_pool_client.web.id
       COGNITO_REGION          = var.aws_region
       POTTY_ORIGIN_SECRET     = random_password.origin_header.result
+      APP_SECRET_ARN          = aws_secretsmanager_secret.app.arn
       VAPID_SECRET_ARN        = aws_secretsmanager_secret.vapid.arn
       VAPID_SUBJECT           = var.vapid_subject
       SCHEDULER_ROLE_ARN      = aws_iam_role.scheduler.arn
@@ -212,6 +294,100 @@ resource "aws_lambda_function" "api" {
 resource "aws_lambda_function_url" "api" {
   function_name      = aws_lambda_function.api.function_name
   authorization_type = "AWS_IAM"
+}
+
+resource "aws_lambda_function" "mcp" {
+  function_name    = "potty-log-mcp"
+  role             = aws_iam_role.mcp.arn
+  runtime          = "python3.12"
+  handler          = "potty_mcp.handler.handler"
+  filename         = data.archive_file.mcp.output_path
+  source_code_hash = data.archive_file.mcp.output_base64sha256
+  memory_size      = 512
+  timeout          = 30
+
+  environment {
+    variables = {
+      DATA_BUCKET  = aws_s3_bucket.data.bucket
+      STATE_KEY    = local.state_key
+      SESSIONS_KEY = "state/sessions.json"
+    }
+  }
+
+  logging_config {
+    log_format = "Text"
+    log_group  = aws_cloudwatch_log_group.mcp.name
+  }
+
+  depends_on = [
+    aws_cloudwatch_log_group.mcp,
+    aws_iam_role_policy_attachment.mcp_basic,
+    aws_iam_role_policy.mcp,
+  ]
+}
+
+resource "aws_lambda_function_url" "mcp" {
+  function_name      = aws_lambda_function.mcp.function_name
+  authorization_type = "AWS_IAM"
+  invoke_mode        = "BUFFERED"
+}
+
+resource "aws_lambda_function" "agent" {
+  function_name = "potty-log-agent"
+  role          = aws_iam_role.agent.arn
+  runtime       = "python3.12"
+  # Lambda Web Adapter starts uvicorn via run.sh.
+  handler          = "run.sh"
+  filename         = data.archive_file.agent.output_path
+  source_code_hash = data.archive_file.agent.output_base64sha256
+  memory_size      = 1024
+  timeout          = 60
+
+  layers = [
+    "arn:aws:lambda:${var.aws_region}:753240598075:layer:LambdaAdapterLayerX86:30",
+  ]
+
+  environment {
+    variables = merge(
+      {
+        AWS_LAMBDA_EXEC_WRAPPER   = "/opt/bootstrap"
+        AWS_LWA_INVOKE_MODE       = "response_stream"
+        AWS_LWA_PORT              = "8080"
+        AWS_LWA_READINESS_CHECK_PATH = "/health"
+        DATA_BUCKET               = aws_s3_bucket.data.bucket
+        STATE_KEY                 = local.state_key
+        SESSIONS_KEY              = "state/sessions.json"
+        COGNITO_USER_POOL_ID      = aws_cognito_user_pool.users.id
+        COGNITO_CLIENT_ID         = aws_cognito_user_pool_client.web.id
+        COGNITO_REGION            = var.aws_region
+        POTTY_ORIGIN_SECRET       = random_password.origin_header.result
+        APP_SECRET_ARN            = aws_secretsmanager_secret.app.arn
+        MCP_FUNCTION_URL          = aws_lambda_function_url.mcp.function_url
+        XAI_MODEL_ID              = var.xai_model_id
+        OTEL_SERVICE_NAME         = "potty-log-agent"
+      },
+      var.otel_exporter_otlp_endpoint != "" ? {
+        OTEL_EXPORTER_OTLP_ENDPOINT = var.otel_exporter_otlp_endpoint
+      } : {}
+    )
+  }
+
+  logging_config {
+    log_format = "Text"
+    log_group  = aws_cloudwatch_log_group.agent.name
+  }
+
+  depends_on = [
+    aws_cloudwatch_log_group.agent,
+    aws_iam_role_policy_attachment.agent_basic,
+    aws_iam_role_policy.agent,
+  ]
+}
+
+resource "aws_lambda_function_url" "agent" {
+  function_name      = aws_lambda_function.agent.function_name
+  authorization_type = "AWS_IAM"
+  invoke_mode        = "RESPONSE_STREAM"
 }
 
 resource "terraform_data" "ui" {
