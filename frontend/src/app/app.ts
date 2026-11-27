@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { Api } from './api';
+import { Theme } from './theme';
 
 const POLL_MS = 30_000;
 
@@ -26,6 +27,7 @@ export class App {
   private hidden = document.visibilityState === 'hidden';
 
   constructor() {
+    inject(Theme);
     effect(() => {
       if (!this.api.signedIn()) {
         this.owner.set(false);

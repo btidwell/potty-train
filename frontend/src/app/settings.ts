@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Api } from './api';
 import { BrowserSession, Settings } from './models';
+import { Theme, ThemeId } from './theme';
 
 @Component({
   selector: 'app-settings',
@@ -11,6 +12,7 @@ import { BrowserSession, Settings } from './models';
 })
 export class SettingsPage {
   protected readonly api = inject(Api);
+  protected readonly theme = inject(Theme);
   protected readonly draft = signal<Settings | null>(null);
   protected readonly saved = signal(false);
   protected readonly canInvite = signal(false);
@@ -118,6 +120,10 @@ export class SettingsPage {
 
   protected logout(): void {
     this.api.logout();
+  }
+
+  protected setTheme(theme: ThemeId): void {
+    this.theme.set(theme);
   }
 
   protected async invite(event: Event): Promise<void> {
