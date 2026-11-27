@@ -658,51 +658,93 @@ app-sheet .sheet-head { margin-bottom: 1.25rem; }
   border-color: transparent;
 }
 
-.chat-bubble.assistant {
-  align-self: stretch;
-}
-
 .chat-bubble p {
   margin: 0;
   white-space: pre-wrap;
 }
 
-.chat-thought {
-  margin: 0 0 0.55rem;
+.chat-turn {
+  align-self: stretch;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.chat-details {
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--script-neutral);
   color: var(--muted);
   font-size: 0.92rem;
 }
 
-.chat-thought summary {
+.chat-details summary {
   cursor: pointer;
+  list-style: none;
+  padding: 0.65rem 0.85rem;
   font-weight: 600;
+  color: var(--ink);
 }
 
-.chat-thought pre {
-  margin: 0.4rem 0 0;
+.chat-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.chat-details summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 1rem;
+  color: var(--muted);
+}
+
+.chat-details[open] summary::before {
+  content: "▾";
+}
+
+.chat-details-body {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0 0.85rem 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.chat-thought-text {
+  margin: 0;
+  max-height: 9rem;
+  overflow: auto;
   white-space: pre-wrap;
   font: inherit;
   color: var(--muted);
 }
 
-.chat-tool {
+.chat-tool-line {
   display: grid;
-  gap: 0.2rem;
-  margin: 0 0 0.55rem;
-  font-size: 0.88rem;
-  color: var(--muted);
+  gap: 0.15rem;
+  margin: 0;
 }
 
-.chat-tool code {
-  font-size: 0.8rem;
+.chat-tool-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.chat-tool-note {
   overflow-wrap: anywhere;
 }
 
-.chat-text + .chat-text {
-  margin-top: 0.35rem;
+.chat-answer {
+  padding: 0.75rem 0.9rem;
+  border-radius: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.chat-answer p {
+  margin: 0;
+  white-space: pre-wrap;
 }
 
 .chat-pending {
+  margin: 0;
   color: var(--muted);
 }
 
