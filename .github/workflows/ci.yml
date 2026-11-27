@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    branches-ignore:
+      - main
 
 # A newer push to the same branch replaces a test run still in progress.
 concurrency:
