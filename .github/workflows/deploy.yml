@@ -91,37 +91,4 @@ jobs:
           TF_IN_AUTOMATION: "true"
         run: |
           terraform init -input=false
-          # Forget pre-aggregation secrets in state first so apply does not call
-          # DeleteSecret under the old IAM deny. Idempotent once they are gone.
-          for addr in \
-            'data.aws_secretsmanager_secret_version.password_current' \
-            'data.aws_secretsmanager_secret_version.token_key_current' \
-            'data.aws_secretsmanager_secret_version.vapid_current' \
-            'aws_secretsmanager_secret_version.password' \
-            'aws_secretsmanager_secret_version.token_key' \
-            'aws_secretsmanager_secret_version.vapid' \
-            'aws_secretsmanager_secret.password' \
-            'aws_secretsmanager_secret.token_key' \
-            'aws_secretsmanager_secret.vapid' \
-            'random_password.password' \
-            'random_password.token_key' \
-            'tls_private_key.vapid'
-          do
-            terraform state rm -lock-timeout=5m "$addr" 2>/dev/null || true
-          done
           terraform apply -input=false -auto-approve -lock-timeout=5m
-          # Force-delete so billing stops immediately (no 30-day recovery window).
-          # Retry: IAM deny removal can lag briefly after the policy update above.
-          for name in potty-log-password potty-log-token-key potty-log-vapid; do
-            for attempt in 1 2 3 4 5 6; do
-              aws secretsmanager describe-secret --secret-id "$name" >/dev/null 2>&1 || break
-              if aws secretsmanager delete-secret --secret-id "$name" --force-delete-without-recovery; then
-                break
-              fi
-              if [ "$attempt" -eq 6 ]; then
-                echo "Failed to delete $name after IAM settle retries." >&2
-                exit 1
-              fi
-              sleep $((attempt * 10))
-            done
-          done
