@@ -282,8 +282,18 @@ export class Api {
       throw new Error('Sign in again.');
     }
     if (!response.ok || !response.body) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || 'Could not reach the assistant.');
+      const raw = await response.text().catch(() => '');
+      let body: { error?: string; message?: string } = {};
+      try {
+        body = raw ? (JSON.parse(raw) as { error?: string; message?: string }) : {};
+      } catch {
+        if (raw) {
+          body = { error: raw.slice(0, 200) };
+        }
+      }
+      throw new Error(
+        body.error || body.message || `Could not reach the assistant (${response.status || 0}).`,
+      );
     }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
