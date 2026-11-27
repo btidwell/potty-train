@@ -11,6 +11,20 @@
   <meta name="apple-mobile-web-app-title" content="Potty Log">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem('potty-theme');
+        if (theme !== 'dark' && theme !== 'light') theme = 'light';
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', theme === 'dark' ? '#1a221c' : '#efe6d4');
+      } catch (e) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

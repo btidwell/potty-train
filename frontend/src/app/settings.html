@@ -1,3 +1,19 @@
+<section class="card settings">
+  <h2>Appearance</h2>
+  <p class="hint">Saved on this device. Light is the default look.</p>
+  <label>Theme
+    <select
+      name="theme"
+      [ngModel]="theme.theme()"
+      (ngModelChange)="setTheme($event)"
+      [ngModelOptions]="{standalone: true}"
+    >
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+  </label>
+</section>
+
 @if (draft(); as form) {
   <form class="card settings" (ngSubmit)="save()">
     <h2>Settings</h2>
