@@ -10,9 +10,3 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "github_repository" {
-  type        = string
-  description = "GitHub repository allowed to deploy, as owner/name."
-  default     = "btidwell/potty-train"
-}
-
