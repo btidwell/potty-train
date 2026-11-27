@@ -134,7 +134,6 @@ def app(monkeypatch, tmp_path):
     monkeypatch.setenv("VAPID_SUBJECT", "mailto:test@example.com")
     monkeypatch.setenv("POTTY_VAPID_PRIVATE_PEM", private)
     monkeypatch.setenv("POTTY_VAPID_PUBLIC_PEM", public)
-    monkeypatch.delenv("VAPID_SECRET_ARN", raising=False)
     push._CACHE["loaded_at"] = 0.0
     push._CACHE["material"] = None
     handler_mod._STORE = FileStore(str(path))
@@ -478,7 +477,6 @@ def test_local_env_does_not_call_aws(monkeypatch, tmp_path):
     monkeypatch.setenv("POTTY_ENV", "local")
     monkeypatch.setenv("POTTY_STATE_PATH", str(tmp_path / "state.json"))
     monkeypatch.setenv("SCHEDULER_ROLE_ARN", "arn:aws:iam::143977713810:role/potty-log-scheduler")
-    monkeypatch.delenv("VAPID_SECRET_ARN", raising=False)
     monkeypatch.delenv("POTTY_VAPID_PRIVATE_PEM", raising=False)
     monkeypatch.delenv("POTTY_VAPID_PUBLIC_PEM", raising=False)
     push._CACHE["loaded_at"] = 0.0

@@ -152,7 +152,6 @@ def _load_vapid() -> dict[str, str] | None:
     if private_pem and public_pem:
         return _material(private_pem, public_pem)
 
-    # Prefer the aggregated app secret (one ARN, key/value pairs).
     if os.environ.get("APP_SECRET_ARN") or os.environ.get("POTTY_ENV") == "local":
         try:
             from potty_train.secrets import app_secret
@@ -164,20 +163,7 @@ def _load_vapid() -> dict[str, str] | None:
         except Exception:
             logger.exception("Could not load VAPID keys from the app secret.")
 
-    if os.environ.get("POTTY_ENV") == "local":
-        return None
-
-    # Legacy single-purpose secret kept during the migration window.
-    arn = os.environ.get("VAPID_SECRET_ARN", "")
-    if not arn:
-        return None
-    import boto3
-
-    response = boto3.client("secretsmanager").get_secret_value(SecretId=arn)
-    parsed = json.loads(str(response.get("SecretString") or ""))
-    if not isinstance(parsed, dict):
-        raise RuntimeError("VAPID secret must be a JSON object.")
-    return _material(str(parsed.get("private_pem") or ""), str(parsed.get("public_pem") or ""))
+    return None
 
 
 def _material(private_pem: str, public_pem: str) -> dict[str, str]:
