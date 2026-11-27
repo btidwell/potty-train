@@ -106,17 +106,20 @@ def _build_agent() -> None:
     AGENT_DEST.mkdir(parents=True)
     # Strands and friends publish manylinux wheels for most deps; install with
     # the Linux tag when possible, then fill gaps without the platform pin.
+    # Do not install API push/PDF deps here: the direct Lambda upload limit is
+    # ~70MB, and pywebpush/fonttools push the agent zip over that. Chat auth
+    # only needs PyJWT (in requirements-agent); service loads push lazily.
     try:
         _pip(AGENT_DEST, *_LINUX, "--requirement", str(AGENT_REQUIREMENTS))
     except subprocess.CalledProcessError:
         _pip(AGENT_DEST, "--requirement", str(AGENT_REQUIREMENTS))
-    _install_api_deps(AGENT_DEST)
     _copy_package(PACKAGE, AGENT_DEST / "potty_train")
     _copy_package(MCP_PACKAGE, AGENT_DEST / "potty_mcp")
     _copy_package(AGENT_PACKAGE, AGENT_DEST / "potty_agent")
     run_sh = AGENT_DEST / "run.sh"
     shutil.copy2(AGENT_PACKAGE / "run.sh", run_sh)
     run_sh.chmod(run_sh.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+
 
 
 def main() -> None:
