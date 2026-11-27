@@ -17,6 +17,7 @@ backend/.local-sessions.json
 backend/.local-sessions.tmp
 backend/.local-password
 backend/.local-cognito.json
+backend/.local-secrets.json
 .DS_Store
 .terraform/
 *.tfstate
