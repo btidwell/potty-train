@@ -46,3 +46,18 @@ def test_agent_package_ships_jwt_for_chat_auth():
 
     assert callable(token_is_valid)
     assert callable(owns)
+
+
+def test_service_does_not_import_push_at_module_load():
+    """Chat auth imports sessions→store→service; that path must not need pywebpush."""
+    import importlib
+    import sys
+
+    sys.modules.pop("potty_train.push", None)
+    import potty_train.service as service
+
+    importlib.reload(service)
+    assert "potty_train.push" not in sys.modules
+    from potty_train.sessions import owns
+
+    assert callable(owns)

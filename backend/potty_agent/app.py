@@ -122,8 +122,12 @@ def _origin_ok(request: Request) -> bool:
 
 
 async def _authorized(request: Request) -> bool:
-    from potty_train.auth import token_is_valid, token_username
-    from potty_train.sessions import owns, touch
+    try:
+        from potty_train.auth import token_is_valid, token_username
+        from potty_train.sessions import owns, touch
+    except Exception:
+        logger.exception("Chat auth imports failed.")
+        raise
 
     header = request.headers.get("x-potty-authorization") or request.headers.get("authorization") or ""
     if not header.lower().startswith("bearer "):
@@ -133,8 +137,14 @@ async def _authorized(request: Request) -> bool:
         return False
     username = token_username(token)
     session_id = (request.headers.get("x-potty-session") or "").strip()
-    if not username or not session_id or not owns(session_id, username):
+    if not username or not session_id:
         return False
+    try:
+        if not owns(session_id, username):
+            return False
+    except Exception:
+        logger.exception("Chat session lookup failed.")
+        raise
     try:
         touch(session_id)
     except Exception:

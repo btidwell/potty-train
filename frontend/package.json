@@ -29,5 +29,9 @@
     "@types/qrcode": "^1.5.6",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2"
+  },
+  "overrides": {
+    "minimatch": "11.0.9",
+    "glob": "14.0.6"
   }
 }

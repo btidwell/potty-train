@@ -64,13 +64,11 @@ def _copy_package(src: Path, dest: Path) -> None:
     )
 
 
-def _build_api() -> None:
-    if API_DEST.exists():
-        shutil.rmtree(API_DEST)
-    API_DEST.mkdir(parents=True)
-    _pip(API_DEST, "--no-deps", *_LINUX, "--requirement", str(API_REQUIREMENTS))
+def _install_api_deps(dest: Path) -> None:
+    """Deps potty_train needs for push, JWT, and PDF (API, MCP tools, agent)."""
+    _pip(dest, "--no-deps", *_LINUX, "--requirement", str(API_REQUIREMENTS))
     _pip(
-        API_DEST,
+        dest,
         *_LINUX,
         "aiohttp",
         "cryptography>=47",
@@ -78,7 +76,14 @@ def _build_api() -> None:
         "py-vapid>=1.7",
         "typing_extensions>=4.4",
     )
-    _pip(API_DEST, "--no-deps", "http-ece>=1.1.0")
+    _pip(dest, "--no-deps", "http-ece>=1.1.0")
+
+
+def _build_api() -> None:
+    if API_DEST.exists():
+        shutil.rmtree(API_DEST)
+    API_DEST.mkdir(parents=True)
+    _install_api_deps(API_DEST)
     _copy_package(PACKAGE, API_DEST / "potty_train")
 
 
@@ -90,6 +95,7 @@ def _build_mcp() -> None:
         _pip(MCP_DEST, *_LINUX, "--requirement", str(MCP_REQUIREMENTS))
     except subprocess.CalledProcessError:
         _pip(MCP_DEST, "--requirement", str(MCP_REQUIREMENTS))
+    _install_api_deps(MCP_DEST)
     _copy_package(PACKAGE, MCP_DEST / "potty_train")
     _copy_package(MCP_PACKAGE, MCP_DEST / "potty_mcp")
 
@@ -104,6 +110,7 @@ def _build_agent() -> None:
         _pip(AGENT_DEST, *_LINUX, "--requirement", str(AGENT_REQUIREMENTS))
     except subprocess.CalledProcessError:
         _pip(AGENT_DEST, "--requirement", str(AGENT_REQUIREMENTS))
+    _install_api_deps(AGENT_DEST)
     _copy_package(PACKAGE, AGENT_DEST / "potty_train")
     _copy_package(MCP_PACKAGE, AGENT_DEST / "potty_mcp")
     _copy_package(AGENT_PACKAGE, AGENT_DEST / "potty_agent")
