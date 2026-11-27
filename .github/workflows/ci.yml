@@ -3,11 +3,10 @@ name: CI
 on:
   push:
 
-# A second push to the same branch cancels a test run still in progress.
-# Main waits, so a terraform apply is not killed while it holds the state lock.
+# A newer push to the same branch replaces a test run still in progress.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -52,45 +51,3 @@ jobs:
           path: frontend/dist/frontend/browser
           if-no-files-found: error
           retention-days: 1
-
-  deploy:
-    name: Deploy
-    needs: test
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: frontend
-          path: frontend/dist/frontend/browser
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::143977713810:role/potty-log-github-deploy
-          aws-region: us-east-1
-
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.17.2"
-          terraform_wrapper: false
-
-      - name: Package Lambda
-        run: python backend/package_lambda.py
-
-      - name: Apply
-        working-directory: infra/terraform
-        env:
-          TF_IN_AUTOMATION: "true"
-        run: |
-          terraform init -input=false
-          terraform apply -input=false -auto-approve -lock-timeout=5m
