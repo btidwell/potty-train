@@ -1,0 +1,12 @@
+{
+  "name": "potty-train",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "install": "bash scripts/cloud-install.sh",
+  "ports": [
+    { "name": "web", "port": 4200 },
+    { "name": "api", "port": 8787 }
+  ]
+}
