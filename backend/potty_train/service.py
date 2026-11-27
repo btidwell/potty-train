@@ -13,7 +13,6 @@ from typing import Any
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
-from potty_train.push import public_push_key
 from potty_train.rules import current_interval, recompute_entries, streak_status
 
 KINDS = {"scheduled", "asked", "accident", "manual"}
@@ -89,12 +88,19 @@ def _push_view(state: dict[str, Any]) -> dict[str, Any]:
     """Deadline tokens the open page needs so it does not alert again.
 
     The reminders object and the push subscriptions stay off the response.
+    Import push lazily so chat/MCP auth paths can load service without pywebpush.
     """
     reminders = state.get("reminders")
     if not isinstance(reminders, dict):
         reminders = {}
+    try:
+        from potty_train.push import public_push_key
+
+        public_key = public_push_key()
+    except Exception:
+        public_key = ""
     return {
-        "public_key": public_push_key(),
+        "public_key": public_key,
         "off_sent_for": _deadline_token(reminders.get("off_sent_for")),
         "sit_sent_for": _deadline_token(reminders.get("sit_sent_for")),
         "off_scheduled_for": _deadline_token(reminders.get("off_scheduled_for")),
