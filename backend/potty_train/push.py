@@ -151,8 +151,23 @@ def _load_vapid() -> dict[str, str] | None:
     public_pem = os.environ.get("POTTY_VAPID_PUBLIC_PEM", "")
     if private_pem and public_pem:
         return _material(private_pem, public_pem)
+
+    # Prefer the aggregated app secret (one ARN, key/value pairs).
+    if os.environ.get("APP_SECRET_ARN") or os.environ.get("POTTY_ENV") == "local":
+        try:
+            from potty_train.secrets import app_secret
+
+            private_pem = app_secret("vapid_private_pem")
+            public_pem = app_secret("vapid_public_pem")
+            if private_pem and public_pem:
+                return _material(private_pem, public_pem)
+        except Exception:
+            logger.exception("Could not load VAPID keys from the app secret.")
+
     if os.environ.get("POTTY_ENV") == "local":
         return None
+
+    # Legacy single-purpose secret kept during the migration window.
     arn = os.environ.get("VAPID_SECRET_ARN", "")
     if not arn:
         return None

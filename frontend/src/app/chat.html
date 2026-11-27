@@ -1,0 +1,79 @@
+<button
+  type="button"
+  class="quiet chat-launch"
+  (click)="toggle()"
+  [attr.aria-expanded]="open()"
+  aria-controls="chat-panel"
+  title="Assistant"
+>
+  <span class="chat-launch-icon" aria-hidden="true"></span>
+  <span class="chat-launch-label">Ask</span>
+</button>
+
+@if (open()) {
+  <div class="chat-backdrop" (click)="close()" aria-hidden="true"></div>
+  <section id="chat-panel" class="chat-panel" role="dialog" aria-label="Potty Log assistant">
+    <header class="chat-header">
+      <div>
+        <p class="brand">Assistant</p>
+        <h2>Potty Log help</h2>
+      </div>
+      <button type="button" class="quiet" (click)="close()">Close</button>
+    </header>
+
+    <div class="chat-scroll" #scroller>
+      @if (messages().length === 0) {
+        <p class="chat-empty">
+          Ask about the timer, log a sit, or check how the streak is going.
+        </p>
+      }
+      @for (message of messages(); track $index) {
+        <article class="chat-bubble" [class.user]="message.role === 'user'" [class.assistant]="message.role === 'assistant'">
+          @if (message.role === 'user') {
+            <p>{{ message.text }}</p>
+          } @else {
+            @for (block of message.blocks; track $index) {
+              @if (block.kind === 'thought') {
+                <details class="chat-thought" open>
+                  <summary>Thinking</summary>
+                  <pre>{{ block.text }}</pre>
+                </details>
+              } @else if (block.kind === 'tool') {
+                <p class="chat-tool">
+                  <span>{{ block.name }}</span>
+                  @if (block.detail) {
+                    <code>{{ block.detail }}</code>
+                  }
+                </p>
+              } @else if (block.kind === 'text') {
+                <p class="chat-text">{{ block.text }}</p>
+              }
+            }
+            @if (message.pending && !message.blocks.length) {
+              <p class="chat-pending">Working…</p>
+            }
+          }
+        </article>
+      }
+    </div>
+
+    @if (error()) {
+      <p class="banner error chat-error" role="alert">{{ error() }}</p>
+    }
+
+    <form class="chat-compose" (ngSubmit)="send()">
+      <label class="sr-only" for="chat-input">Message</label>
+      <textarea
+        id="chat-input"
+        rows="2"
+        [ngModel]="draft()"
+        (ngModelChange)="draft.set($event)"
+        [disabled]="streaming()"
+        placeholder="Ask about the schedule or sheet…"
+      ></textarea>
+      <button type="submit" class="primary" [disabled]="streaming() || !draft().trim()">
+        {{ streaming() ? 'Sending…' : 'Send' }}
+      </button>
+    </form>
+  </section>
+}

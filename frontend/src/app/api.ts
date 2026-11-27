@@ -15,6 +15,16 @@ import { AppState, BrowserSession, HouseholdUser } from './models';
 const SESSION_COOKIE = 'potty-session';
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
 
+export type ChatStreamEvent = {
+  type: 'thought' | 'text' | 'tool' | 'tool_result' | 'error' | 'done';
+  text?: string;
+  name?: string;
+  input?: unknown;
+  result?: string;
+  message?: string;
+  toolUseId?: string;
+};
+
 @Injectable({ providedIn: 'root' })
 export class Api {
   private readonly router = inject(Router);
@@ -249,6 +259,62 @@ export class Api {
 
   downloadPdf(): Promise<void> {
     return this.downloadFile('/api/export.pdf', 'potty-log.pdf');
+  }
+
+  async streamChat(
+    message: string,
+    history: Array<{ role: string; content: string }>,
+    onEvent: (event: ChatStreamEvent) => void,
+  ): Promise<void> {
+    const payload = JSON.stringify({ message, history });
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        ...(await this.headers()),
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        'x-amz-content-sha256': await payloadHash(payload),
+      },
+      body: payload,
+    });
+    if (response.status === 401) {
+      this.logout();
+      throw new Error('Sign in again.');
+    }
+    if (!response.ok || !response.body) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || 'Could not reach the assistant.');
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+      for (const part of parts) {
+        const line = part
+          .split('\n')
+          .map((item) => item.trim())
+          .find((item) => item.startsWith('data:'));
+        if (!line) {
+          continue;
+        }
+        const raw = line.slice(5).trim();
+        if (!raw) {
+          continue;
+        }
+        try {
+          onEvent(JSON.parse(raw) as ChatStreamEvent);
+        } catch {
+          // Skip malformed chunks.
+        }
+      }
+    }
   }
 
   private async downloadFile(path: string, filename: string): Promise<void> {
