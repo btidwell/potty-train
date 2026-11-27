@@ -28,32 +28,41 @@
         </p>
       }
       @for (message of messages(); track $index) {
-        <article class="chat-bubble" [class.user]="message.role === 'user'" [class.assistant]="message.role === 'assistant'">
-          @if (message.role === 'user') {
+        @if (message.role === 'user') {
+          <article class="chat-bubble user">
             <p>{{ message.text }}</p>
-          } @else {
-            @for (block of message.blocks; track $index) {
-              @if (block.kind === 'thought') {
-                <details class="chat-thought" open>
-                  <summary>Thinking</summary>
-                  <pre>{{ block.text }}</pre>
-                </details>
-              } @else if (block.kind === 'tool') {
-                <p class="chat-tool">
-                  <span>{{ block.name }}</span>
-                  @if (block.detail) {
-                    <code>{{ block.detail }}</code>
+          </article>
+        } @else {
+          <article class="chat-turn">
+            @if (message.details.length || message.pending) {
+              <details class="chat-details">
+                <summary>{{ detailsHeading(message) }}</summary>
+                <div class="chat-details-body">
+                  @for (item of message.details; track $index) {
+                    @if (item.kind === 'thought') {
+                      <pre class="chat-thought-text">{{ item.text }}</pre>
+                    } @else {
+                      <p class="chat-tool-line">
+                        <span class="chat-tool-name">{{ item.name }}</span>
+                        <span class="chat-tool-note">
+                          {{ item.status === 'running' ? 'Running…' : item.note }}
+                        </span>
+                      </p>
+                    }
                   }
-                </p>
-              } @else if (block.kind === 'text') {
-                <p class="chat-text">{{ block.text }}</p>
-              }
+                  @if (message.pending && !message.details.length) {
+                    <p class="chat-pending">Working…</p>
+                  }
+                </div>
+              </details>
             }
-            @if (message.pending && !message.blocks.length) {
-              <p class="chat-pending">Working…</p>
+            @if (message.text) {
+              <div class="chat-answer">
+                <p>{{ message.text }}</p>
+              </div>
             }
-          }
-        </article>
+          </article>
+        }
       }
     </div>
 
