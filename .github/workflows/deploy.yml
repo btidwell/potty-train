@@ -111,7 +111,17 @@ jobs:
           done
           terraform apply -input=false -auto-approve -lock-timeout=5m
           # Force-delete so billing stops immediately (no 30-day recovery window).
+          # Retry: IAM deny removal can lag briefly after the policy update above.
           for name in potty-log-password potty-log-token-key potty-log-vapid; do
-            aws secretsmanager describe-secret --secret-id "$name" >/dev/null 2>&1 || continue
-            aws secretsmanager delete-secret --secret-id "$name" --force-delete-without-recovery
+            for attempt in 1 2 3 4 5 6; do
+              aws secretsmanager describe-secret --secret-id "$name" >/dev/null 2>&1 || break
+              if aws secretsmanager delete-secret --secret-id "$name" --force-delete-without-recovery; then
+                break
+              fi
+              if [ "$attempt" -eq 6 ]; then
+                echo "Failed to delete $name after IAM settle retries." >&2
+                exit 1
+              fi
+              sleep $((attempt * 10))
+            done
           done
