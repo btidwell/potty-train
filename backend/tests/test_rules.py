@@ -376,7 +376,7 @@ def test_preload_csv_keeps_every_recorded_interval():
 
 
 def _preload_rows():
-    path = Path(__file__).resolve().parents[2] / "preload.csv"
+    path = Path(__file__).resolve().parent / "fixtures" / "preload.csv"
     rows = []
     with path.open(encoding="utf-8-sig", newline="") as handle:
         for raw in csv.DictReader(handle):

@@ -50,6 +50,8 @@ cd infra/terraform
 terraform apply
 ```
 
+Pushes to any branch run the backend tests and a production frontend build (`.github/workflows/ci.yml`). After that succeeds on `main`, `.github/workflows/deploy.yml` packages the Lambda and runs `terraform apply`. That workflow assumes `potty-log-github-deploy`.
+
 Open the `site_url` output. The UI uses hash routes (`/#/now`), so a refresh stays on the page you were on.
 
 New accounts are invite-only. The owner sends the invite from Settings. Every account sees the same log.

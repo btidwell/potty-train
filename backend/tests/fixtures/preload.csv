@@ -1,0 +1,8 @@
+Date,Time,Off-Potty Interval (in Minutes),Toile Voids (BM=Boul movement U=Urine N=Nothing),Accident (S=Soil W=Wet),Comments
+01/20/2026,8:00,15,U,,first sit
+01/20/2026,8:15,0,N,,pull-up
+01/21/2026,18:00,20,U,,stayed
+01/21/2026,18:20,20,N,,same interval
+01/22/2026,9:00,0,N,,pull-up
+01/23/2026,10:00,0,N,,pull-up
+01/24/2026,12:00,45,N,W,accident

@@ -23,6 +23,11 @@ output "distribution_id" {
   value       = aws_cloudfront_distribution.site.id
 }
 
+output "github_deploy_role_arn" {
+  description = "Role GitHub Actions assumes when it deploys main."
+  value       = aws_iam_role.github_deploy.arn
+}
+
 output "viewer_countries" {
   description = "CloudFront geographic allow list."
   value       = aws_cloudfront_distribution.site.restrictions[0].geo_restriction[0].locations
