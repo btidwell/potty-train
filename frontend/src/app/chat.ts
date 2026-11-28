@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, ViewChild, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Api, ChatStreamEvent } from './api';
 import { MarkdownPipe } from './markdown.pipe';
@@ -37,6 +37,23 @@ export class ChatPanel {
 
   close(): void {
     this.open.set(false);
+  }
+
+  onComposeKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' || event.ctrlKey || event.metaKey || event.isComposing) {
+      return;
+    }
+    event.preventDefault();
+    void this.send();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeydown(event: KeyboardEvent): void {
+    if (!this.open() || event.key !== 'Escape' || event.isComposing) {
+      return;
+    }
+    event.preventDefault();
+    this.close();
   }
 
   detailsHeading(message: ChatMessage): string {

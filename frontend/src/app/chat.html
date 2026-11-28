@@ -75,6 +75,7 @@
         rows="2"
         [ngModel]="draft()"
         (ngModelChange)="draft.set($event)"
+        (keydown)="onComposeKeydown($event)"
         [disabled]="streaming()"
         placeholder="Ask about the schedule or sheet…"
       ></textarea>
