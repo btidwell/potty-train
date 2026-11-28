@@ -12,6 +12,9 @@ const POLL_MS = 30_000;
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, ChatPanel],
   templateUrl: './app.html',
+  host: {
+    '[class.app-shell]': 'showNav()',
+  },
 })
 export class App {
   protected readonly api = inject(Api);
